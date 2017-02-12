@@ -5,17 +5,21 @@ import logging
 logger = logging.getLogger('main')
 
 if len(sys.argv) < 2:
-    logger.warn('Need a config filename!')
+    print('Need a config filename!')
     sys.exit(1)
 
-if len(sys.argv) >= 3 and sys.argv[2] == 'debug':
-    logging.basicConfig(level=logging.DEBUG)
-
 config_filename = sys.argv[1]
-logger.info('Loading JSON config from %s', config_filename)
 with open(config_filename, 'r') as f:
     config_json = json.load(f)
 
+if 'verbose' in config_json and config_json['verbose']:
+    logging.basicConfig(level=logging.DEBUG)
+    logger.debug('Turning on verbose logging.')
+else:
+    # Default log level is info.
+    logging.basicConfig(level=logging.INFO)
+
+logger.info('Loaded JSON config from %s', config_filename)
 logger.debug('CONFIGURATION: %s', json.dumps(config_json, indent=2))
 
 # Parameters are loaded, now use them to read the data.
