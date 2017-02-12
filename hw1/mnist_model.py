@@ -2,12 +2,28 @@ import sys
 import json
 import logging
 
+logger = logging.getLogger('main')
+
 if len(sys.argv) < 2:
-    logging.warn('Need a config filename!'
+    print('Need a config filename!')
+    sys.exit(1)
 
 config_filename = sys.argv[1]
-logging.info('Loading JSON config from %s', config_filename)
 with open(config_filename, 'r') as f:
-    config_json = json.load(config_filename)
+    config_json = json.load(f)
 
-logging.debug('Config: %s', json.dumps(config_json))
+logger.info('Loaded JSON config from %s', config_filename)
+
+if config_json.get('verbose', False):
+    logging.basicConfig(level=logging.DEBUG)
+    logger.debug('Turning on verbose logging.')
+else:
+    # Default log level is info.
+    logging.basicConfig(level=logging.INFO)
+
+logger.debug('CONFIGURATION: %s', json.dumps(config_json, indent=2))
+
+# Parameters are loaded, now use them to read the data.
+# Do some training.
+
+# Output the model file.
