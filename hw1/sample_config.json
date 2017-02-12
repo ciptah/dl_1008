@@ -1,8 +1,10 @@
 {
   "verbose": true,
+
   "training": {
     "learning_rate": 0.1,
     "dropout": 0.4,
+
     "momentum": {
       "mu_coefficient": 0.05,
       "use_nesterov": false
