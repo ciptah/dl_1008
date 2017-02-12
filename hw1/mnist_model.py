@@ -3,7 +3,8 @@ import json
 import logging
 
 if len(sys.argv) < 2:
-    logging.warn('Need a config filename!'
+    logging.warn('Need a config filename!')
+    sys.exit(1)
 
 config_filename = sys.argv[1]
 logging.info('Loading JSON config from %s', config_filename)
