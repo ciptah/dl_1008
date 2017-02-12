@@ -1,9 +1,9 @@
 {
-  'name': 'hello',
-  'key': 313.33,
-  'list': [
+  "name": "hello",
+  "key": 313.33,
+  "list": [
     1,
     2,
-    3,
+    3
   ]
 }
