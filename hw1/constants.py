@@ -1,7 +1,7 @@
 from models.basic_net import basicNet
-from models.prelu import prelu
 
+# The values of this dict are functions that take the config object and returns
+# a subclass of nn.Module.
 models = {
-    'basic': basicNet,
-    'prelu': prelu,
+    'basic': basicNet
 }

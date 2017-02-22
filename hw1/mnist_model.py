@@ -90,9 +90,13 @@ if __name__ == "__main__":
     validation_provider = data_provider.DataProvider(file_dir="validation_data.p", train=False)
     logger.info('validation provider loaded')
 
+    # Num of epochs
+    num_epochs = config.get('training', {}).get('num_epochs', 10)
+    logger.info('running for %d epochs', num_epochs)
+
     # start training
     model = predictive_model.PredictiveModel(config)
-    for epoch in range(1, 11):
+    for epoch in range(1, num_epochs + 1):
         model.start_train()
         train_epoch(model, train_provider, epoch)
         model.start_prediction()
