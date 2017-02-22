@@ -103,4 +103,5 @@ if __name__ == "__main__":
         validate_model(model, validation_provider)
 
     # save model
-    pickle.dump(model, open("sample_save_model.m", "wb"))
+    with open('sample_save_model.m', 'wb') as save_file:
+        pickle.dump(model, save_file)
