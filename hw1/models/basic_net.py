@@ -17,6 +17,9 @@ class Net(nn.Module):
     and dropout parameters can be tuned via configuration parameters.
 
     It's a ConvNet with 2 convolution and 2 fully connected layers.
+
+    Worth noting that the nn.Conv2d and nn.Linear modules provided by PyTorch
+    use the initialization standard deviation found in He et al.
     """
     def __init__(self, dropout=0.5):
         super(Net, self).__init__()
