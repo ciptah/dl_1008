@@ -9,9 +9,12 @@ import logging
 
 logger = logging.getLogger('predictive_model')
 
-class Net(nn.Module):
+class BasicNet(nn.Module):
     """
-    Sample Model
+    Sample Model.
+
+    This is the model from the example code, adapted a bit so the momentum
+    and dropout parameters can be tuned via configuration parameters.
     """
     def __init__(self, dropout=0.5):
         super(Net, self).__init__()
