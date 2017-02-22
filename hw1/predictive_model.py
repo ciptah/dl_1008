@@ -15,6 +15,8 @@ class BasicNet(nn.Module):
 
     This is the model from the example code, adapted a bit so the momentum
     and dropout parameters can be tuned via configuration parameters.
+
+    It's a ConvNet with 2 convolution and 2 fully connected layers.
     """
     def __init__(self, dropout=0.5):
         super(Net, self).__init__()
