@@ -19,7 +19,7 @@ class PredictiveModel:
 
         self.config = config
 
-        model = config.get('model', 'basic')
+        model = config.get('model', 'ladder')
         logger.info('Using model "%s".', model)
         self.model = constants.models[model](config)
 
