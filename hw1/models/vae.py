@@ -18,6 +18,11 @@ logger = logging.getLogger('vae')
 MNIST_SIZE = 28*28
 C = -0.5 * np.log(2 * np.pi)
 
+NORM_STD = 0.3081
+NORM_MEAN = 0.1307
+MIN = -NORM_MEAN / NORM_STD + 1e-4
+MAX = (1-NORM_MEAN) / NORM_STD - 1e-4
+
 def norm_pdf(mean, logvar, v):
     """Computes multivariate gaussian pdf."""
     z = (v - mean)
@@ -28,13 +33,19 @@ def mse(m, unused_, v):
     # Negative so higher = better
     return 1/(1e-10 + torch.mean((v - m).pow(2), 1))
 
+def bce(mean, unused_, v):
+    # Has to be 0-1 valued.
+    # This is actually negative BCE, the convention is that higher = better
+    return (v * mean.log() + (1 - v) * (1 - mean).log()).sum(1)
+
 gen_losses = {
     'norm_pdf': norm_pdf,
-    'mse': mse
+    'mse': mse,
+    'bce': bce
 }
 
 def kl_div_with_std_norm(mean, logvar):
-    """KL divergence with standard multivariate normal. Consumes both inputs"""
+    """KL divergence with standard multivariate normal. Lower is better."""
     return torch.sum(logvar.exp() + mean * mean - logvar - 1, 1) / 2
 
 def imshow(img):
@@ -53,7 +64,7 @@ class VAEDecoder(nn.Module):
         super(VAEDecoder, self).__init__()
         self.nonl = nonl
         self.k = k
-        self.fc_sizes = [200, 200]
+        self.fc_sizes = [400, 400]
        
         prev_dim = k
         self.fcs = []
@@ -97,7 +108,7 @@ class VAEEncoder(nn.Module):
         # TODO: Configurable sizes/channels/parameters.
         conv1_channels = 10
         conv2_channels = 20
-        self.fc_sizes = [200, 200]
+        self.fc_sizes = [400]
 
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
         self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=5)
@@ -149,7 +160,8 @@ class VAE(nn.Module):
     The output is a pair of NNs: one for encoding and one for decoding.
     """
 
-    def __init__(self, k=2, epsilon=1.0, kl_multiplier=1.0, nonl=F.relu):
+    def __init__(self, k=2, epsilon=1.0, kl_multiplier=1.0, nonl=F.relu,
+            zero_one=False):
         super(VAE, self).__init__()
 
         logger.info('model:VAE k=%d', k)
@@ -159,6 +171,7 @@ class VAE(nn.Module):
         self.k = k
         self.epsilon = epsilon
         self.kl_multiplier = kl_multiplier
+        self.zero_one = zero_one
         self.encoder = VAEEncoder(k, nonl=nonl)
         self.decoder = VAEDecoder(k, nonl=nonl)
 
@@ -168,6 +181,8 @@ class VAE(nn.Module):
         """Forward step decodes and reconstructs x (the data), then
         returns the VAE loss and the reconstructed means.
         """
+        if self.zero_one:
+            x = x.mul(NORM_STD).add(NORM_MEAN).div(255)
         # "Random seed" for z samples. They'll be multiplied with the
         # mean and variance to create a randomized sample (also known as
         # the reparametrization trick)
@@ -179,6 +194,8 @@ class VAE(nn.Module):
 
         # Decode. Given z, return distribution P(X|z). (n, k) -> (n, 768)
         x_mean, x_logvar = self.decoder(z_samples)
+        if self.zero_one:
+            x_mean = F.sigmoid(x_mean) # Using BCE, values are 0-1
 
         # E[log p(x|z)] - based on 1 sample of z. Logvar must be diagonal.
         # Intuitively if Q is good, then this should be close to P(X), so
@@ -197,6 +214,9 @@ class VAE(nn.Module):
             logger.debug('S: mean: %f   std: %s', x_mean.data.mean(), x_mean.data.std())
             logger.debug('Z: mean: %f   std: %s', z_samples.data.mean(), z_samples.data.std())
 
+        if self.zero_one:
+            # Re-scale the reconstructed image.
+            x_mean = x_mean.mul(255).sub(NORM_MEAN).div(NORM_STD)
         # The loss is the negative of the score.
         return -(log_x_z - self.kl_multiplier * kl_div), x_mean
 
@@ -240,9 +260,14 @@ class VAETrainer:
         gen_loss_str = vae_config.get('generation_loss', 'norm_pdf')
         self.gen_loss = gen_losses[gen_loss_str]
 
+        self.zero_one_mode = False
+        if gen_loss_str == 'bce':
+            logger.info('using BCE; outputting 0-1 values')
+            self.zero_one_mode = True
+
         logger.info('trainer:num_latent_vars: %d', z_size)
 
-        self.model = VAE(z_size, epsilon, self.kl_multiplier)
+        self.model = VAE(z_size, epsilon, self.kl_multiplier, self.nonl, self.zero_one_mode)
         self.optimizer = optim.Adam(self.model.parameters(),
                 lr=learning_rate,
                 weight_decay=weight_decay)
@@ -252,6 +277,7 @@ class VAETrainer:
         self.last_minibatch = None
 
     def start_train(self):
+        self.history = []
         self.model.train()
 
     def train_batch(self, data, batch_idx=0):
@@ -262,22 +288,28 @@ class VAETrainer:
         minibatch_loss.backward() # Specifically, it's here.
         self.optimizer.step()
 
-        reconstructed_image = reconstructed_data.view_as(data)
+        # We need to clamp the reconstructed image so it doesn't overflow.
+        reconstructed_image = reconstructed_data.view_as(data).clamp(MIN, MAX)
         self.last_minibatch = (minibatch_loss.data[0], data.data, reconstructed_image.data)
         return minibatch_loss.data[0]
 
     def epoch_done(self, epoch_id):
         if epoch_id % self.image_per == 0:
-            self.history.append(self.last_minibatch)
+            loss, data, reconst = self.last_minibatch
+            diff = (data - reconst)
+            self.history.append((data, reconst, diff * diff))
             self.last_minibatch = None
 
     def training_done(self):
+        def denorm(x):
+            return x.mul(NORM_STD).add(NORM_MEAN).clamp(MIN, MAX)
         images_per_epoch = 10
         tensors = []
         for epoch_data in self.history:
-            mloss, data, reconst = epoch_data
-            tensors.append(data[:images_per_epoch,:,:,:])
-            tensors.append(reconst[:images_per_epoch,:,:,:])
+            data, reconst, diff = epoch_data
+            tensors.append(denorm(data[:images_per_epoch,:,:,:]))
+            tensors.append(denorm(reconst[:images_per_epoch,:,:,:]))
+            tensors.append(denorm(diff[:images_per_epoch,:,:,:]))
         res = torch.cat(tensors)
         logger.debug('Image grid size: %s', res.size())
         torchvision.utils.save_image(res, self.image_file_name, nrow=images_per_epoch)
@@ -292,5 +324,9 @@ def get_nonl(config):
     }[config]
 
 def vae(config):
+    if config.get('vae', {}).get('continue', False):
+        logger.info('continuing from previous model.')
+        model_file_name = config.get('vae').get('model_file_name', 'vae.torch')
+        return torch.load(model_file_name)
     return VAETrainer(config)
 
