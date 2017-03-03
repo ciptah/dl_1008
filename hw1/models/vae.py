@@ -44,12 +44,12 @@ class VAEDecoder(nn.Module):
         super(VAEDecoder, self).__init__()
         self.nonl = nonl
         self.k = k
-        self.fc_sizes = [400, 400]
+        self.fc_sizes = [400, 400, 400, 400]
+        self.fc0 = nn.Linear(k, self.fc_sizes[0])
        
-        prev_dim = k
-        self.fcs = []
-        for i, sz in enumerate(self.fc_sizes):
-            fc = nn.Linear(prev_dim, sz)
+        self.fcs = [] # All the same size, so they're appendable.
+        for i, sz in enumerate(self.fc_sizes[1:]):
+            fc = nn.Linear(self.fc_sizes[i-1], sz)
             setattr(self, 'fc_{}'.format(i), fc)
             self.fcs.append(fc)
             prev_dim = sz
@@ -61,10 +61,10 @@ class VAEDecoder(nn.Module):
         logger.info('decoder: %d (z) -> %s -> %d (MNIST)',
                 self.k, self.fc_sizes, MNIST_SIZE)
 
-    def forward(self, z):
+    def forward(self, z, fc_limit=10):
         # Input is K-dim vector.
-        h = z
-        for fc in self.fcs:
+        h = self.nonl(self.fc0(z))
+        for fc in self.fcs[(-fc_limit):]:
             h = self.nonl(fc(h))
 
         # No nonlinearities; preserve 
@@ -87,22 +87,21 @@ class VAEEncoder(nn.Module):
         self.use_convnets = use_convnets
 
         # TODO: Configurable sizes/channels/parameters.
-        conv1_channels = 10
-        conv2_channels = 20
-        self.fc_sizes = [400]
+        conv1_channels = 15
+        conv2_channels = 25
+        self.fc_sizes = [400, 400, 400, 400] # All the same size.
 
         # 28 -> 24 -> 12 -> 10 -> 5
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
         self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=3)
-        self.conv_out_dim = 500
+        self.conv_out_dim = 625
         self.conv_to_fc = nn.Linear(self.conv_out_dim, self.fc_sizes[0])
 
         self.straight_to_fc = nn.Linear(MNIST_SIZE, self.fc_sizes[0])
 
         self.fcs = []
-        prev_dim = self.fc_sizes[0]
         for i, sz in enumerate(self.fc_sizes[1:]):
-            fc = nn.Linear(prev_dim, sz)
+            fc = nn.Linear(self.fc_sizes[i-1], sz)
             setattr(self, 'fc_{}'.format(i), fc)
             self.fcs.append(fc)
             prev_dim = sz
@@ -112,7 +111,7 @@ class VAEEncoder(nn.Module):
         logger.info('encoder:%d channels for 1st convnet', conv1_channels)
         logger.info('encoder:%d channels for 2nd convnet', conv2_channels)
 
-    def forward(self, x):
+    def forward(self, x, fc_limit=10):
         # Refer to basic_net.py for an explanation of this ConvNet.
         if self.use_convnets:
             x = self.nonl(F.max_pool2d(self.conv1(x), 2))
@@ -122,7 +121,7 @@ class VAEEncoder(nn.Module):
         else:
             x = self.nonl(self.straight_to_fc(x.view(-1, MNIST_SIZE)))
 
-        for fc in self.fcs:
+        for fc in self.fcs[(-fc_limit):]:
             x = self.nonl(fc(x))
         mean = self.mean(x)
         logvar = self.logvar(x)
@@ -151,6 +150,8 @@ class VAE(nn.Module):
     def __init__(self, config):
         super(VAE, self).__init__()
         vae_config = config.get('vae', {})
+        train_config = config.get('training', {})
+        logger.info('starting new model from scratch.')
 
         # Optimization parameters.
         # - Number of real-valued latent variables.
@@ -158,14 +159,15 @@ class VAE(nn.Module):
         # - nonlinear function to use.
         self.nonl = get_nonl(train_config.get('nonlinearity', 'relu'))
 
-        self.encoder = VAEEncoder(k, nonl=nonl, use_convnets=self.use_convnets)
-        self.decoder = VAEDecoder(k, nonl=nonl)
-
         self.counter = 0
-        self.update(config)
-        diagnostics()
 
-    def update(self, config):
+        self.encoder = VAEEncoder(self.k, nonl=self.nonl)
+        self.decoder = VAEDecoder(self.k, nonl=self.nonl)
+
+        self.update(config, vae_config)
+        self.diagnostics()
+
+    def update(self, config, vae_config):
         # - Standard deviation of Gaussian to convert to a z-sample.
         self.epsilon = vae_config.get('sampling_epsilon', 1.0)
         # - Multiply KL divergence by this number before computing total cost.
@@ -174,6 +176,8 @@ class VAE(nn.Module):
         # - whether to use/update conv nets during encoding.
         self.use_convnets = vae_config.get('use_convnets', True)
         self.encoder.use_convnets = self.use_convnets
+        # - How many fully connected layers to pass thru.
+        self.fc_limit = vae_config.get('fc_limit', 10)
 
     def diagnostics(self):
         logger.info('model:VAE k=%d', self.k)
@@ -181,6 +185,7 @@ class VAE(nn.Module):
         logger.info('model:nonlinearity=%s', self.nonl)
         logger.info('model:kl_multiplier=%f', self.kl_multiplier)
         logger.info('model:convnetr=%s', self.use_convnets)
+        logger.info('model:fc_limit=%d', self.fc_limit)
 
     def forward(self, x):
         """Forward step decodes and reconstructs x (the data), then
@@ -192,11 +197,11 @@ class VAE(nn.Module):
         random = Variable(torch.randn(x.size()[0], self.k)) * self.epsilon
 
         # Encode. (n, 768) -> (n, k)
-        z_mean, z_logvar = self.encoder(x)
+        z_mean, z_logvar = self.encoder(x, fc_limit=self.fc_limit)
         z_samples = z_mean + random * (z_logvar / 2).exp()
 
         # Decode. Given z, return distribution P(X|z). (n, k) -> (n, 768)
-        x_mean, x_logvar = self.decoder(z_samples)
+        x_mean, x_logvar = self.decoder(z_samples, fc_limit=self.fc_limit)
 
         # E[log p(x|z)] - based on 1 sample of z. Logvar must be diagonal.
         # Intuitively if Q is good, then this should be close to P(X), so
@@ -249,7 +254,7 @@ class VAETrainer:
             model_file_name = config.get('vae').get('model_file_name', 'vae.torch')
             logger.info('loading model from %s', model_file_name)
             self.model = torch.load(model_file_name)
-            self.model.update(config)
+            self.model.update(config, vae_config)
         else:
             self.model = VAE(config)
 
