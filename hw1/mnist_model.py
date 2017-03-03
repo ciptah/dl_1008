@@ -95,7 +95,7 @@ if __name__ == "__main__":
     logger.info('running for %d epochs', num_epochs)
 
     # unlabeled training
-    unlabeled_model = getUnlabeledModel(config)
+    unlabeled_model = get_unlabeled_model(config)
     if unlabeled_model != None:
         unlabeled_provider = data_provider.DataProvider(file_dir="train_unlabeled.p", train=True)
         unlabeled_size = len(unlabeled_provider.dataset)

@@ -202,6 +202,9 @@ class VAETrainer:
         self.last_minibatch = None
 
     def training_done(self):
-        # Print out nice pictures.
+        # TODO: Print out nice pictures.
         pass
+
+def vae(config):
+    return VAETrainer(config)
 
