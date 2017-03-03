@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch
 import numpy as np
+from torch.autograd import Variable
 
 import logging
 
@@ -89,6 +90,7 @@ class VAEEncoder(nn.Module):
     def forward(self, x):
         # Input is 1x28x28. Output is 2k.
         # N (minibatch size) is implicit.
+        logger.debug(x.size())
 
         # Refer to basic_net.py for an explanation of this ConvNet.
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
@@ -123,7 +125,8 @@ class VAE(nn.Module):
         super(VAE, self).__init__()
 
         logger.info('VAE k=%d', k)
-
+        
+        self.k = k
         self.encoder = VAEEncoder(k)
         self.decoder = VAEDecoder(k)
 
@@ -134,7 +137,7 @@ class VAE(nn.Module):
         # "Random seed" for z samples. They'll be multiplied with the
         # mean and variance to create a randomized sample (also known as
         # the reparametrization trick)
-        random = Variable(torch.randn(x.size()[0], k))
+        random = Variable(torch.randn(x.size()[0], self.k))
 
         # Encode. (n, 768) -> (n, k)
         z_mean, z_logvar = self.encoder(x)
