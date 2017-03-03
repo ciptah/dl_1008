@@ -292,11 +292,11 @@ class VAETrainer:
             return x.mul(NORM_STD).add(NORM_MEAN).clamp(MIN, MAX)
         images_per_epoch = 10
         tensors = []
-        for epoch_data in self.history:
+        for epoch_data in self.history[-10:]:
             data, reconst, diff = epoch_data
             tensors.append(denorm(data[:images_per_epoch,:,:,:]))
             tensors.append(denorm(reconst[:images_per_epoch,:,:,:]))
-            tensors.append(denorm(diff[:images_per_epoch,:,:,:]))
+            #tensors.append(denorm(diff[:images_per_epoch,:,:,:]))
         res = torch.cat(tensors)
         logger.debug('Image grid size: %s', res.size())
         torchvision.utils.save_image(res, self.image_file_name, nrow=images_per_epoch)
