@@ -16,21 +16,27 @@ import logging
 logger = logging.getLogger('vae')
 
 MNIST_SIZE = 28*28
-LOGPI = np.log(np.pi)
-LOG2 = np.log(2)
+C = -0.5 * np.log(2 * np.pi)
 
 def norm_pdf(mean, logvar, v):
     """Computes multivariate gaussian pdf."""
     # Minibatch compatible.
-    exponent = torch.sum(-0.5 * (mean - v).abs().pow(2).div(logvar.exp()), 1)
-    loglike = -0.5 * torch.sum(logvar.add(LOGPI + LOG2), 1).add(exponent)
-    return loglike
+    dist = mean - v
+    euclidean = dist.mul(dist)
+    quad = euclidean / (2 * logvar.exp())
+
+    # logger.debug('Euclidean: %s', torch.sum(euclidean, 1).data.numpy().mean())
+    # logger.debug('QuadForm: %s', torch.sum(quad, 1).data.numpy().mean())
+    # logger.debug(quad.size())
+
+    loglike = - logvar / 2 - quad + C
+    # logger.debug('LogLike: %s', loglike.data.numpy().mean())
+    # logger.debug(loglike.size())
+    return torch.sum(loglike, 1)
 
 def kl_div_with_std_norm(mean, logvar):
     """KL divergence with standard multivariate normal. Consumes both inputs"""
-    x = torch.sum(mean.mul(mean).sub(1).sub(logvar), 1)
-    tr = torch.sum(logvar.exp(), 1)
-    return tr.add(x) / 2
+    return torch.sum(logvar.exp() + mean * mean - logvar - 1, 1) / 2
 
 def imshow(img):
     img = img / 2 + 0.5 # unnormalize
@@ -47,26 +53,32 @@ class VAEDecoder(nn.Module):
     def __init__(self, k):
         super(VAEDecoder, self).__init__()
         self.k = k
-        self.fc1_size = 300
-        self.fc2_size = 500
-        
-        self.fc1 = nn.Linear(k, self.fc1_size)
-        self.fc2 = nn.Linear(self.fc1_size, self.fc2_size)
-        self.mean = nn.Linear(self.fc2_size, MNIST_SIZE)
-        self.logvar = nn.Linear(self.fc2_size, MNIST_SIZE)
+        self.fc_sizes = [500]
+       
+        prev_dim = k
+        self.fcs = []
+        for i, sz in enumerate(self.fc_sizes):
+            fc = nn.Linear(prev_dim, sz)
+            setattr(self, 'fc_{}'.format(i), fc)
+            self.fcs.append(fc)
+            prev_dim = sz
+
+        self.mean = nn.Linear(prev_dim, MNIST_SIZE)
+        self.logvar = nn.Linear(prev_dim, MNIST_SIZE)
         # Following Kingma's example we output log(var(x)) instead of var(x).
 
-        logger.info('VAE Decoder: %d (z) -> %d -> %d -> %d (MNIST)',
-                self.k, self.fc1_size, self.fc2_size, MNIST_SIZE)
+        logger.info('decoder: %d (z) -> %s -> %d (MNIST)',
+                self.k, self.fc_sizes, MNIST_SIZE)
 
     def forward(self, z):
         # Input is K-dim vector.
-        h1 = F.relu(self.fc1(z))
-        h2 = F.relu(self.fc2(h1))
+        h = z
+        for fc in self.fcs:
+            h = F.relu(fc(h))
 
         # No nonlinearities; preserve 
-        mean = self.mean(h2)
-        logvar = self.logvar(h2)
+        mean = self.mean(h)
+        logvar = self.logvar(h)
         return mean, logvar
 
 class VAEEncoder(nn.Module):
@@ -84,26 +96,34 @@ class VAEEncoder(nn.Module):
         # TODO: Configurable sizes/channels/parameters.
         conv1_channels = 10
         conv2_channels = 20
+        self.fc_sizes = [500]
 
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
         self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=5)
-        self.fc1 = nn.Linear(320, 100)
-        self.mean = nn.Linear(100, k)
-        self.logvar = nn.Linear(100, k)
+        prev_dim = 320
+        self.fcs = []
+        for i, sz in enumerate(self.fc_sizes):
+            fc = nn.Linear(prev_dim, sz)
+            setattr(self, 'fc_{}'.format(i), fc)
+            self.fcs.append(fc)
+            prev_dim = sz
+        self.mean = nn.Linear(prev_dim, k)
+        self.logvar = nn.Linear(prev_dim, k)
 
-        logger.info('%d channels for 1st convnet', conv1_channels)
-        logger.info('%d channels for 2nd convnet', conv2_channels)
+        logger.info('encoder:%d channels for 1st convnet', conv1_channels)
+        logger.info('encoder:%d channels for 2nd convnet', conv2_channels)
 
     def forward(self, x):
         # Input is NBatch x 1x28x28. Output is 2k.
         # N (minibatch size) is implicit.
-        logger.debug(x.size())
+        #logger.debug(x.size())
 
         # Refer to basic_net.py for an explanation of this ConvNet.
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
         x = F.relu(F.max_pool2d(self.conv2(x), 2))
         x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
+        for fc in self.fcs:
+            x = F.relu(fc(x))
         mean = self.mean(x)
         logvar = self.logvar(x)
         return mean, logvar
@@ -131,7 +151,7 @@ class VAE(nn.Module):
     def __init__(self, k=2):
         super(VAE, self).__init__()
 
-        logger.info('VAE k=%d', k)
+        logger.info('model:VAE k=%d', k)
         
         self.k = k
         self.encoder = VAEEncoder(k)
@@ -162,8 +182,10 @@ class VAE(nn.Module):
         # Intuitively, if diff is huge, it's not easy to trust the number above
         # so the lower bound widens.
         kl_div = kl_div_with_std_norm(z_mean, z_logvar)
+        #logger.debug('logP: %f   KL: %f', log_x_z, kl_div)
 
-        return (log_x_z - kl_div), x_mean
+        # The loss is the negative of the score.
+        return -(log_x_z - kl_div), x_mean
 
 class VAETrainer:
     """Trains VAE with unlabeled data.
@@ -182,7 +204,7 @@ class VAETrainer:
                 train_config.get('weight_decay', 0.0))
         z_size = vae_config.get('num_latent_vars', 2)
 
-        logger.info('num_latent_vars: %d', z_size)
+        logger.info('trainer:num_latent_vars: %d', z_size)
 
         self.model = VAE(z_size)
         self.optimizer = optim.Adam(self.model.parameters(),
@@ -205,15 +227,15 @@ class VAETrainer:
         self.optimizer.step()
 
         reconstructed_image = reconstructed_data.view_as(data)
-        self.last_minibatch = (minibatch_loss, data, reconstructed_image)
-        return minibatch_loss, loss, reconstructed_image
+        self.last_minibatch = (minibatch_loss.data[0], data.data, reconstructed_image.data)
+        return minibatch_loss.data[0]
 
     def epoch_done(self):
         self.history.append(self.last_minibatch)
         self.last_minibatch = None
 
     def training_done(self):
-        images_per_epoch = 4
+        images_per_epoch = 10
         tensors = []
         for epoch_data in self.history:
             mloss, data, reconst = epoch_data

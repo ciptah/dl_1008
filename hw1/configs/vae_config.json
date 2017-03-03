@@ -1,8 +1,10 @@
 {
   "verbose": true,
   "unlabeled_model": "vae",
+  "skip_labeled_training": true,
 
   "training": {
-    "num_epochs": 3
+    "learning_rate": 1e-4,
+    "num_unlabeled_epochs": 10
   }
 }

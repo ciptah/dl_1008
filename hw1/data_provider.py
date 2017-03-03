@@ -38,7 +38,7 @@ class UnlabeledProvider:
         logger.info('opening pickle file at %s', file_dir)
         with open(file_dir, "rb") as f:
             self.dataset = pickle.load(f)
-        self.dataset.train_labels = torch.zeros(self.dataset.train_data.size()[0])
+        self.dataset.train_labels = torch.zeros(57000)
 
         # create loader
         self.loader = torch.utils.data.DataLoader(self.dataset,
