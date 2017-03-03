@@ -98,7 +98,7 @@ if __name__ == "__main__":
     unlabeled_model = predictive_model.get_unlabeled_model(config)
     if unlabeled_model != None:
         unlabeled_provider = data_provider.UnlabeledProvider()
-        unlabeled_size = len(unlabeled_provider.dataset.train_data)
+        unlabeled_size = len(unlabeled_provider.loader)
         logger.info('unlabeled provider loaded, %d examples', unlabeled_size)
         num_unlabeled_epochs = config.get('training', {}).get('num_unlabeled_epochs', 10)
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         for epoch in range(1, num_unlabeled_epochs + 1):
             # Single epoch, unlabeled mode
             minibatches = unlabeled_provider.loader
-            for batch_idx, data in enumerate(minibatches):
+            for batch_idx, (data, unused_) in enumerate(minibatches):
                 data = Variable(data)
                 unlabeled_model.train_batch(data)
                 if batch_idx % 5 == 0:

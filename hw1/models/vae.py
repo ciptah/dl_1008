@@ -88,7 +88,7 @@ class VAEEncoder(nn.Module):
         logger.info('%d channels for 2nd convnet', conv2_channels)
 
     def forward(self, x):
-        # Input is 1x28x28. Output is 2k.
+        # Input is NBatch x 1x28x28. Output is 2k.
         # N (minibatch size) is implicit.
         logger.debug(x.size())
 
