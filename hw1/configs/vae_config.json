@@ -3,6 +3,6 @@
   "unlabeled_model": "vae",
 
   "training": {
-    "num_epochs": 3,
+    "num_epochs": 3
   }
 }
