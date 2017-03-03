@@ -44,7 +44,7 @@ class VAEDecoder(nn.Module):
         super(VAEDecoder, self).__init__()
         self.nonl = nonl
         self.k = k
-        self.fc_sizes = [400, 400, 400, 400]
+        self.fc_sizes = [200, 200, 200, 200]
         self.fc0 = nn.Linear(k, self.fc_sizes[0])
        
         self.fcs = [] # All the same size, so they're appendable.
@@ -89,7 +89,7 @@ class VAEEncoder(nn.Module):
         # TODO: Configurable sizes/channels/parameters.
         conv1_channels = 15
         conv2_channels = 25
-        self.fc_sizes = [400, 400, 400, 400] # All the same size.
+        self.fc_sizes = [200, 200, 200, 200]
 
         # 28 -> 24 -> 12 -> 10 -> 5
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
