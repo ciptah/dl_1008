@@ -114,7 +114,7 @@ if __name__ == "__main__":
                     print('Pretrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, batch_idx * len(data), unlabeled_size,
                                100. * batch_idx / len(minibatches), loss))
-            unlabeled_model.epoch_done()
+            unlabeled_model.epoch_done(epoch - 1)
         unlabeled_model.training_done()
 
     if config.get('skip_labeled_training', False):

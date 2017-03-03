@@ -20,19 +20,18 @@ C = -0.5 * np.log(2 * np.pi)
 
 def norm_pdf(mean, logvar, v):
     """Computes multivariate gaussian pdf."""
-    # Minibatch compatible.
-    dist = mean - v
-    euclidean = dist.mul(dist)
-    quad = euclidean / (2 * logvar.exp())
+    z = (v - mean)
+    exp = z * z * -0.5 / logvar.exp()
+    return torch.sum(exp + C + (-0.5 * logvar), 1)
 
-    # logger.debug('Euclidean: %s', torch.sum(euclidean, 1).data.numpy().mean())
-    # logger.debug('QuadForm: %s', torch.sum(quad, 1).data.numpy().mean())
-    # logger.debug(quad.size())
+def mse(m, unused_, v):
+    # Negative so higher = better
+    return -torch.mean((v - m).pow(2), 1)
 
-    loglike = - logvar / 2 - quad + C
-    # logger.debug('LogLike: %s', loglike.data.numpy().mean())
-    # logger.debug(loglike.size())
-    return torch.sum(loglike, 1)
+gen_losses = {
+    'norm_pdf': norm_pdf,
+    'mse': mse
+}
 
 def kl_div_with_std_norm(mean, logvar):
     """KL divergence with standard multivariate normal. Consumes both inputs"""
@@ -53,7 +52,7 @@ class VAEDecoder(nn.Module):
     def __init__(self, k):
         super(VAEDecoder, self).__init__()
         self.k = k
-        self.fc_sizes = [300, 300]
+        self.fc_sizes = [800, 800]
        
         prev_dim = k
         self.fcs = []
@@ -94,14 +93,13 @@ class VAEEncoder(nn.Module):
         self.k = k # Output
 
         # TODO: Configurable sizes/channels/parameters.
-        conv1_channels = 15
-        conv2_channels = 25
-        self.fc_sizes = [300, 300]
+        conv1_channels = 10
+        conv2_channels = 20
+        self.fc_sizes = [800, 800]
 
-        # 1x28x28 -> 15x24x24 -> 15x12x12 -> 25x10x10 -> 25x5x5
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
-        self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=3)
-        prev_dim = 625
+        self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=5)
+        prev_dim = 320
         self.fcs = []
         for i, sz in enumerate(self.fc_sizes):
             fc = nn.Linear(prev_dim, sz)
@@ -122,7 +120,7 @@ class VAEEncoder(nn.Module):
         # Refer to basic_net.py for an explanation of this ConvNet.
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
         x = F.relu(F.max_pool2d(self.conv2(x), 2))
-        x = x.view(-1, 625)
+        x = x.view(-1, 320)
         for fc in self.fcs:
             x = F.relu(fc(x))
         mean = self.mean(x)
@@ -149,7 +147,7 @@ class VAE(nn.Module):
     The output is a pair of NNs: one for encoding and one for decoding.
     """
 
-    def __init__(self, k=2, epsilon=1.0):
+    def __init__(self, k=2, epsilon=1.0, kl_multiplier=1.0):
         super(VAE, self).__init__()
 
         logger.info('model:VAE k=%d', k)
@@ -157,10 +155,13 @@ class VAE(nn.Module):
         
         self.k = k
         self.epsilon = epsilon
+        self.kl_multiplier = kl_multiplier
         self.encoder = VAEEncoder(k)
         self.decoder = VAEDecoder(k)
 
-    def forward(self, x):
+        self.counter = 0
+
+    def forward(self, x, gen_loss=norm_pdf):
         """Forward step decodes and reconstructs x (the data), then
         returns the VAE loss and the reconstructed means.
         """
@@ -179,16 +180,19 @@ class VAE(nn.Module):
         # E[log p(x|z)] - based on 1 sample of z. Logvar must be diagonal.
         # Intuitively if Q is good, then this should be close to P(X), so
         # getting this as high as possible is a good thing.
-        log_x_z = norm_pdf(x_mean, x_logvar, x.view(-1, MNIST_SIZE))
+        log_x_z = gen_loss(x_mean, x_logvar, x.view(-1, MNIST_SIZE))
 
         # KL divergence - The bigger this is, the worse the score.
         # Intuitively, if diff is huge, it's not easy to trust the number above
         # so the lower bound widens.
         kl_div = kl_div_with_std_norm(z_mean, z_logvar)
-        # logger.debug('logP: %f   KL: %f', log_x_z.data.mean(), kl_div.data.mean())
+
+        self.counter += 1
+        if self.counter % 100 == 0:
+            logger.debug('logP: %f   KL: %f', log_x_z.data.mean(), kl_div.data.mean())
 
         # The loss is the negative of the score.
-        return -(log_x_z - kl_div), x_mean
+        return -(log_x_z - self.kl_multiplier * kl_div), x_mean
 
 class VAETrainer:
     """Trains VAE with unlabeled data.
@@ -208,10 +212,14 @@ class VAETrainer:
         z_size = vae_config.get('num_latent_vars', 2)
         epsilon = vae_config.get('sampling_epsilon', 1.0)
         self.image_per = vae_config.get('image_per', 1)
+        self.kl_multiplier = vae_config.get('kl_multiplier', 1)
+
+        gen_loss_str = vae_config.get('generation_loss', 'norm_pdf')
+        self.gen_loss = gen_losses[gen_loss_str]
 
         logger.info('trainer:num_latent_vars: %d', z_size)
 
-        self.model = VAE(z_size, epsilon)
+        self.model = VAE(z_size, epsilon, self.kl_multiplier)
         self.optimizer = optim.Adam(self.model.parameters(),
                 lr=learning_rate,
                 weight_decay=weight_decay)
@@ -226,7 +234,7 @@ class VAETrainer:
     def train_batch(self, data, batch_idx=0):
         """Where the *~*~magic~*~* happens."""
         self.optimizer.zero_grad()
-        loss, reconstructed_data = self.model(data)
+        loss, reconstructed_data = self.model(data, gen_loss=self.gen_loss)
         minibatch_loss = loss.mean()
         minibatch_loss.backward() # Specifically, it's here.
         self.optimizer.step()
