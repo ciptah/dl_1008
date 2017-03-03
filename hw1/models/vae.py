@@ -26,7 +26,7 @@ def norm_pdf(mean, logvar, v):
 
 def mse(m, unused_, v):
     # Negative so higher = better
-    return -torch.mean((v - m).pow(2), 1)
+    return 1/(1e-10 + torch.mean((v - m).pow(2), 1))
 
 gen_losses = {
     'norm_pdf': norm_pdf,
@@ -49,10 +49,11 @@ class VAEDecoder(nn.Module):
     image size). The output is the mean and log-variance of the Gaussian,
     following Kingma's example."""
 
-    def __init__(self, k):
+    def __init__(self, k, nonl=F.relu):
         super(VAEDecoder, self).__init__()
+        self.nonl = nonl
         self.k = k
-        self.fc_sizes = [800, 800]
+        self.fc_sizes = [200, 200]
        
         prev_dim = k
         self.fcs = []
@@ -73,7 +74,7 @@ class VAEDecoder(nn.Module):
         # Input is K-dim vector.
         h = z
         for fc in self.fcs:
-            h = F.relu(fc(h))
+            h = self.nonl(fc(h))
 
         # No nonlinearities; preserve 
         mean = self.mean(h)
@@ -88,14 +89,15 @@ class VAEEncoder(nn.Module):
 
     The network itself is a ConvNet that follows BasicNet."""
 
-    def __init__(self, k):
+    def __init__(self, k, nonl=F.relu):
         super(VAEEncoder, self).__init__()
         self.k = k # Output
+        self.nonl = nonl
 
         # TODO: Configurable sizes/channels/parameters.
         conv1_channels = 10
         conv2_channels = 20
-        self.fc_sizes = [800, 800]
+        self.fc_sizes = [200, 200]
 
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
         self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=5)
@@ -118,11 +120,11 @@ class VAEEncoder(nn.Module):
         #logger.debug(x.size())
 
         # Refer to basic_net.py for an explanation of this ConvNet.
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2(x), 2))
+        x = self.nonl(F.max_pool2d(self.conv1(x), 2))
+        x = self.nonl(F.max_pool2d(self.conv2(x), 2))
         x = x.view(-1, 320)
         for fc in self.fcs:
-            x = F.relu(fc(x))
+            x = self.nonl(fc(x))
         mean = self.mean(x)
         logvar = self.logvar(x)
         return mean, logvar
@@ -147,17 +149,18 @@ class VAE(nn.Module):
     The output is a pair of NNs: one for encoding and one for decoding.
     """
 
-    def __init__(self, k=2, epsilon=1.0, kl_multiplier=1.0):
+    def __init__(self, k=2, epsilon=1.0, kl_multiplier=1.0, nonl=F.relu):
         super(VAE, self).__init__()
 
         logger.info('model:VAE k=%d', k)
         logger.info('model:epsilon=%f', epsilon)
+        logger.info('model:nonl=%s', nonl)
         
         self.k = k
         self.epsilon = epsilon
         self.kl_multiplier = kl_multiplier
-        self.encoder = VAEEncoder(k)
-        self.decoder = VAEDecoder(k)
+        self.encoder = VAEEncoder(k, nonl=nonl)
+        self.decoder = VAEDecoder(k, nonl=nonl)
 
         self.counter = 0
 
@@ -190,6 +193,9 @@ class VAE(nn.Module):
         self.counter += 1
         if self.counter % 100 == 0:
             logger.debug('logP: %f   KL: %f', log_x_z.data.mean(), kl_div.data.mean())
+            logger.debug('X: mean: %f   std: %s', x.data.mean(), x.data.std())
+            logger.debug('S: mean: %f   std: %s', x_mean.data.mean(), x_mean.data.std())
+            logger.debug('Z: mean: %f   std: %s', z_samples.data.mean(), z_samples.data.std())
 
         # The loss is the negative of the score.
         return -(log_x_z - self.kl_multiplier * kl_div), x_mean
@@ -204,16 +210,33 @@ class VAETrainer:
         self.config = config
         vae_config = config.get('vae', {})
         train_config = config.get('training')
+
+        # Adam parameters.
         # Get learning rate from vae block, otherwise default to global rate
         learning_rate = vae_config.get('learning_rate', 
                 train_config.get('learning_rate', 3e-4))
         weight_decay = vae_config.get('weight_decay', 
                 train_config.get('weight_decay', 0.0))
-        z_size = vae_config.get('num_latent_vars', 2)
-        epsilon = vae_config.get('sampling_epsilon', 1.0)
-        self.image_per = vae_config.get('image_per', 1)
-        self.kl_multiplier = vae_config.get('kl_multiplier', 1)
 
+        # Optimization parameters.
+        # - Number of real-valued latent variables.
+        z_size = vae_config.get('num_latent_vars', 2)
+        # - Standard deviation of Gaussian to convert to a z-sample.
+        epsilon = vae_config.get('sampling_epsilon', 1.0)
+        # - Multiply KL divergence by this number before computing total cost.
+        #   Acts as a regularization parameter.
+        self.kl_multiplier = vae_config.get('kl_multiplier', 1.0)
+        # - nonlinear function to use.
+        self.nonl = get_nonl(train_config.get('nonlinearity', 'relu'))
+
+        # Reporting parameters.
+        # - Number of epochs before getting a new comparison image.
+        self.image_per = vae_config.get('image_per', 1)
+        # - Where to save the image file.
+        self.image_file_name = vae_config.get('image_file_name', 'vae.png')
+        # - Where to save the VAE model.
+        self.model_file_name = vae_config.get('model_file_name', 'vae.torch')
+        # - Which generation loss to use (gaussian pdf vs mean squared error)
         gen_loss_str = vae_config.get('generation_loss', 'norm_pdf')
         self.gen_loss = gen_losses[gen_loss_str]
 
@@ -257,7 +280,16 @@ class VAETrainer:
             tensors.append(reconst[:images_per_epoch,:,:,:])
         res = torch.cat(tensors)
         logger.debug('Image grid size: %s', res.size())
-        torchvision.utils.save_image(res, 'vae.png', nrow=images_per_epoch)
+        torchvision.utils.save_image(res, self.image_file_name, nrow=images_per_epoch)
+        torch.save(self, self.model_file_name)
+
+def get_nonl(config):
+    return {
+        'relu': F.relu,
+        'prelu': F.prelu,
+        'tanh': F.tanh,
+        'softplus': F.softplus
+    }[config]
 
 def vae(config):
     return VAETrainer(config)
