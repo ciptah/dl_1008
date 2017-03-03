@@ -5,8 +5,7 @@
 
   "training": {
     "learning_rate": 2e-4,
-    "num_unlabeled_epochs": 25,
-    "nonlinearity": "softplus"
+    "num_unlabeled_epochs": 25
   },
 
   "vae": {

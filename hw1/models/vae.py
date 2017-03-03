@@ -53,7 +53,7 @@ class VAEDecoder(nn.Module):
         super(VAEDecoder, self).__init__()
         self.nonl = nonl
         self.k = k
-        self.fc_sizes = [200, 200]
+        self.fc_sizes = [1200]
        
         prev_dim = k
         self.fcs = []
@@ -97,7 +97,7 @@ class VAEEncoder(nn.Module):
         # TODO: Configurable sizes/channels/parameters.
         conv1_channels = 10
         conv2_channels = 20
-        self.fc_sizes = [200, 200]
+        self.fc_sizes = [1200]
 
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
         self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=5)
