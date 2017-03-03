@@ -4,14 +4,15 @@
   "skip_labeled_training": true,
 
   "training": {
-    "learning_rate": 3e-4,
-    "num_unlabeled_epochs": 10,
-    "nonlinearity": "relu"
+    "learning_rate": 4e-3,
+    "num_unlabeled_epochs": 5,
+    "nonlinearity": "softplus"
   },
 
   "vae": {
     "num_latent_vars": 20,
     "image_per": 1,
-    "continue": false
+    "continue": false,
+    "use_convnets": false
   }
 }

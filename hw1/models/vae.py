@@ -29,29 +29,9 @@ def norm_pdf(mean, logvar, v):
     exp = z * z * -0.5 / logvar.exp()
     return torch.sum(exp + C + (-0.5 * logvar), 1)
 
-def mse(m, unused_, v):
-    # Negative so higher = better
-    return 1/(1e-10 + torch.mean((v - m).pow(2), 1))
-
-def bce(mean, unused_, v):
-    # Has to be 0-1 valued.
-    # This is actually negative BCE, the convention is that higher = better
-    return (v * mean.log() + (1 - v) * (1 - mean).log()).sum(1)
-
-gen_losses = {
-    'norm_pdf': norm_pdf,
-    'mse': mse,
-    'bce': bce
-}
-
 def kl_div_with_std_norm(mean, logvar):
     """KL divergence with standard multivariate normal. Lower is better."""
     return torch.sum(logvar.exp() + mean * mean - logvar - 1, 1) / 2
-
-def imshow(img):
-    img = img / 2 + 0.5 # unnormalize
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1,2,0)))
 
 class VAEDecoder(nn.Module):
     """The decoder generates X (an MNIST image) from z (latent variables).
@@ -100,21 +80,28 @@ class VAEEncoder(nn.Module):
 
     The network itself is a ConvNet that follows BasicNet."""
 
-    def __init__(self, k, nonl=F.relu):
+    def __init__(self, k, nonl=F.relu, use_convnets=True):
         super(VAEEncoder, self).__init__()
         self.k = k # Output
         self.nonl = nonl
+        self.use_convnets = use_convnets
 
         # TODO: Configurable sizes/channels/parameters.
         conv1_channels = 10
         conv2_channels = 20
         self.fc_sizes = [400]
 
+        # 28 -> 24 -> 12 -> 10 -> 5
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
-        self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=5)
-        prev_dim = 320
+        self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=3)
+        self.conv_out_dim = 500
+        self.conv_to_fc = nn.Linear(self.conv_out_dim, self.fc_sizes[0])
+
+        self.straight_to_fc = nn.Linear(MNIST_SIZE, self.fc_sizes[0])
+
         self.fcs = []
-        for i, sz in enumerate(self.fc_sizes):
+        prev_dim = self.fc_sizes[0]
+        for i, sz in enumerate(self.fc_sizes[1:]):
             fc = nn.Linear(prev_dim, sz)
             setattr(self, 'fc_{}'.format(i), fc)
             self.fcs.append(fc)
@@ -126,14 +113,15 @@ class VAEEncoder(nn.Module):
         logger.info('encoder:%d channels for 2nd convnet', conv2_channels)
 
     def forward(self, x):
-        # Input is NBatch x 1x28x28. Output is 2k.
-        # N (minibatch size) is implicit.
-        #logger.debug(x.size())
-
         # Refer to basic_net.py for an explanation of this ConvNet.
-        x = self.nonl(F.max_pool2d(self.conv1(x), 2))
-        x = self.nonl(F.max_pool2d(self.conv2(x), 2))
-        x = x.view(-1, 320)
+        if self.use_convnets:
+            x = self.nonl(F.max_pool2d(self.conv1(x), 2))
+            x = self.nonl(F.max_pool2d(self.conv2(x), 2))
+            x = x.view(-1, self.conv_out_dim)
+            x = self.nonl(self.conv_to_fc(x))
+        else:
+            x = self.nonl(self.straight_to_fc(x.view(-1, MNIST_SIZE)))
+
         for fc in self.fcs:
             x = self.nonl(fc(x))
         mean = self.mean(x)
@@ -160,29 +148,44 @@ class VAE(nn.Module):
     The output is a pair of NNs: one for encoding and one for decoding.
     """
 
-    def __init__(self, k=2, epsilon=1.0, kl_multiplier=1.0, nonl=F.relu,
-            zero_one=False):
+    def __init__(self, config):
         super(VAE, self).__init__()
+        vae_config = config.get('vae', {})
 
-        logger.info('model:VAE k=%d', k)
-        logger.info('model:epsilon=%f', epsilon)
-        logger.info('model:nonl=%s', nonl)
-        
-        self.k = k
-        self.epsilon = epsilon
-        self.kl_multiplier = kl_multiplier
-        self.zero_one = zero_one
-        self.encoder = VAEEncoder(k, nonl=nonl)
+        # Optimization parameters.
+        # - Number of real-valued latent variables.
+        self.k = vae_config.get('num_latent_vars', 2)
+        # - nonlinear function to use.
+        self.nonl = get_nonl(train_config.get('nonlinearity', 'relu'))
+
+        self.encoder = VAEEncoder(k, nonl=nonl, use_convnets=self.use_convnets)
         self.decoder = VAEDecoder(k, nonl=nonl)
 
         self.counter = 0
+        self.update(config)
+        diagnostics()
 
-    def forward(self, x, gen_loss=norm_pdf):
+    def update(self, config):
+        # - Standard deviation of Gaussian to convert to a z-sample.
+        self.epsilon = vae_config.get('sampling_epsilon', 1.0)
+        # - Multiply KL divergence by this number before computing total cost.
+        #   Acts as a regularization parameter.
+        self.kl_multiplier = vae_config.get('kl_multiplier', 1.0)
+        # - whether to use/update conv nets during encoding.
+        self.use_convnets = vae_config.get('use_convnets', True)
+        self.encoder.use_convnets = self.use_convnets
+
+    def diagnostics(self):
+        logger.info('model:VAE k=%d', self.k)
+        logger.info('model:epsilon=%f', self.epsilon)
+        logger.info('model:nonlinearity=%s', self.nonl)
+        logger.info('model:kl_multiplier=%f', self.kl_multiplier)
+        logger.info('model:convnetr=%s', self.use_convnets)
+
+    def forward(self, x):
         """Forward step decodes and reconstructs x (the data), then
         returns the VAE loss and the reconstructed means.
         """
-        if self.zero_one:
-            x = x.mul(NORM_STD).add(NORM_MEAN).div(255)
         # "Random seed" for z samples. They'll be multiplied with the
         # mean and variance to create a randomized sample (also known as
         # the reparametrization trick)
@@ -194,13 +197,11 @@ class VAE(nn.Module):
 
         # Decode. Given z, return distribution P(X|z). (n, k) -> (n, 768)
         x_mean, x_logvar = self.decoder(z_samples)
-        if self.zero_one:
-            x_mean = F.sigmoid(x_mean) # Using BCE, values are 0-1
 
         # E[log p(x|z)] - based on 1 sample of z. Logvar must be diagonal.
         # Intuitively if Q is good, then this should be close to P(X), so
         # getting this as high as possible is a good thing.
-        log_x_z = gen_loss(x_mean, x_logvar, x.view(-1, MNIST_SIZE))
+        log_x_z = norm_pdf(x_mean, x_logvar, x.view(-1, MNIST_SIZE))
 
         # KL divergence - The bigger this is, the worse the score.
         # Intuitively, if diff is huge, it's not easy to trust the number above
@@ -214,9 +215,6 @@ class VAE(nn.Module):
             logger.debug('S: mean: %f   std: %s', x_mean.data.mean(), x_mean.data.std())
             logger.debug('Z: mean: %f   std: %s', z_samples.data.mean(), z_samples.data.std())
 
-        if self.zero_one:
-            # Re-scale the reconstructed image.
-            x_mean = x_mean.mul(255).sub(NORM_MEAN).div(NORM_STD)
         # The loss is the negative of the score.
         return -(log_x_z - self.kl_multiplier * kl_div), x_mean
 
@@ -238,17 +236,6 @@ class VAETrainer:
         weight_decay = vae_config.get('weight_decay', 
                 train_config.get('weight_decay', 0.0))
 
-        # Optimization parameters.
-        # - Number of real-valued latent variables.
-        z_size = vae_config.get('num_latent_vars', 2)
-        # - Standard deviation of Gaussian to convert to a z-sample.
-        epsilon = vae_config.get('sampling_epsilon', 1.0)
-        # - Multiply KL divergence by this number before computing total cost.
-        #   Acts as a regularization parameter.
-        self.kl_multiplier = vae_config.get('kl_multiplier', 1.0)
-        # - nonlinear function to use.
-        self.nonl = get_nonl(train_config.get('nonlinearity', 'relu'))
-
         # Reporting parameters.
         # - Number of epochs before getting a new comparison image.
         self.image_per = vae_config.get('image_per', 1)
@@ -256,18 +243,16 @@ class VAETrainer:
         self.image_file_name = vae_config.get('image_file_name', 'vae.png')
         # - Where to save the VAE model.
         self.model_file_name = vae_config.get('model_file_name', 'vae.torch')
-        # - Which generation loss to use (gaussian pdf vs mean squared error)
-        gen_loss_str = vae_config.get('generation_loss', 'norm_pdf')
-        self.gen_loss = gen_losses[gen_loss_str]
 
-        self.zero_one_mode = False
-        if gen_loss_str == 'bce':
-            logger.info('using BCE; outputting 0-1 values')
-            self.zero_one_mode = True
+        if config.get('vae', {}).get('continue', False):
+            logger.info('continuing from previous model.')
+            model_file_name = config.get('vae').get('model_file_name', 'vae.torch')
+            logger.info('loading model from %s', model_file_name)
+            self.model = torch.load(model_file_name)
+            self.model.update(config)
+        else:
+            self.model = VAE(config)
 
-        logger.info('trainer:num_latent_vars: %d', z_size)
-
-        self.model = VAE(z_size, epsilon, self.kl_multiplier, self.nonl, self.zero_one_mode)
         self.optimizer = optim.Adam(self.model.parameters(),
                 lr=learning_rate,
                 weight_decay=weight_decay)
@@ -283,7 +268,7 @@ class VAETrainer:
     def train_batch(self, data, batch_idx=0):
         """Where the *~*~magic~*~* happens."""
         self.optimizer.zero_grad()
-        loss, reconstructed_data = self.model(data, gen_loss=self.gen_loss)
+        loss, reconstructed_data = self.model(data)
         minibatch_loss = loss.mean()
         minibatch_loss.backward() # Specifically, it's here.
         self.optimizer.step()
@@ -313,7 +298,7 @@ class VAETrainer:
         res = torch.cat(tensors)
         logger.debug('Image grid size: %s', res.size())
         torchvision.utils.save_image(res, self.image_file_name, nrow=images_per_epoch)
-        torch.save(self, self.model_file_name)
+        torch.save(self.model, self.model_file_name)
 
 def get_nonl(config):
     return {
@@ -324,9 +309,5 @@ def get_nonl(config):
     }[config]
 
 def vae(config):
-    if config.get('vae', {}).get('continue', False):
-        logger.info('continuing from previous model.')
-        model_file_name = config.get('vae').get('model_file_name', 'vae.torch')
-        return torch.load(model_file_name)
     return VAETrainer(config)
 
