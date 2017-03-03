@@ -53,7 +53,7 @@ class VAEDecoder(nn.Module):
     def __init__(self, k):
         super(VAEDecoder, self).__init__()
         self.k = k
-        self.fc_sizes = [500]
+        self.fc_sizes = [300, 300]
        
         prev_dim = k
         self.fcs = []
@@ -94,13 +94,14 @@ class VAEEncoder(nn.Module):
         self.k = k # Output
 
         # TODO: Configurable sizes/channels/parameters.
-        conv1_channels = 10
-        conv2_channels = 20
-        self.fc_sizes = [500]
+        conv1_channels = 15
+        conv2_channels = 25
+        self.fc_sizes = [300, 300]
 
+        # 1x28x28 -> 15x24x24 -> 15x12x12 -> 25x10x10 -> 25x5x5
         self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
-        self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=5)
-        prev_dim = 320
+        self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=3)
+        prev_dim = 625
         self.fcs = []
         for i, sz in enumerate(self.fc_sizes):
             fc = nn.Linear(prev_dim, sz)
@@ -121,7 +122,7 @@ class VAEEncoder(nn.Module):
         # Refer to basic_net.py for an explanation of this ConvNet.
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
         x = F.relu(F.max_pool2d(self.conv2(x), 2))
-        x = x.view(-1, 320)
+        x = x.view(-1, 625)
         for fc in self.fcs:
             x = F.relu(fc(x))
         mean = self.mean(x)
@@ -148,12 +149,14 @@ class VAE(nn.Module):
     The output is a pair of NNs: one for encoding and one for decoding.
     """
 
-    def __init__(self, k=2):
+    def __init__(self, k=2, epsilon=1.0):
         super(VAE, self).__init__()
 
         logger.info('model:VAE k=%d', k)
+        logger.info('model:epsilon=%f', epsilon)
         
         self.k = k
+        self.epsilon = epsilon
         self.encoder = VAEEncoder(k)
         self.decoder = VAEDecoder(k)
 
@@ -164,11 +167,11 @@ class VAE(nn.Module):
         # "Random seed" for z samples. They'll be multiplied with the
         # mean and variance to create a randomized sample (also known as
         # the reparametrization trick)
-        random = Variable(torch.randn(x.size()[0], self.k))
+        random = Variable(torch.randn(x.size()[0], self.k)) * self.epsilon
 
         # Encode. (n, 768) -> (n, k)
         z_mean, z_logvar = self.encoder(x)
-        z_samples = z_mean + random * z_logvar.exp()
+        z_samples = z_mean + random * (z_logvar / 2).exp()
 
         # Decode. Given z, return distribution P(X|z). (n, k) -> (n, 768)
         x_mean, x_logvar = self.decoder(z_samples)
@@ -182,7 +185,7 @@ class VAE(nn.Module):
         # Intuitively, if diff is huge, it's not easy to trust the number above
         # so the lower bound widens.
         kl_div = kl_div_with_std_norm(z_mean, z_logvar)
-        #logger.debug('logP: %f   KL: %f', log_x_z, kl_div)
+        # logger.debug('logP: %f   KL: %f', log_x_z.data.mean(), kl_div.data.mean())
 
         # The loss is the negative of the score.
         return -(log_x_z - kl_div), x_mean
@@ -203,10 +206,12 @@ class VAETrainer:
         weight_decay = vae_config.get('weight_decay', 
                 train_config.get('weight_decay', 0.0))
         z_size = vae_config.get('num_latent_vars', 2)
+        epsilon = vae_config.get('sampling_epsilon', 1.0)
+        self.image_per = vae_config.get('image_per', 1)
 
         logger.info('trainer:num_latent_vars: %d', z_size)
 
-        self.model = VAE(z_size)
+        self.model = VAE(z_size, epsilon)
         self.optimizer = optim.Adam(self.model.parameters(),
                 lr=learning_rate,
                 weight_decay=weight_decay)
@@ -230,9 +235,10 @@ class VAETrainer:
         self.last_minibatch = (minibatch_loss.data[0], data.data, reconstructed_image.data)
         return minibatch_loss.data[0]
 
-    def epoch_done(self):
-        self.history.append(self.last_minibatch)
-        self.last_minibatch = None
+    def epoch_done(self, epoch_id):
+        if epoch_id % self.image_per == 0:
+            self.history.append(self.last_minibatch)
+            self.last_minibatch = None
 
     def training_done(self):
         images_per_epoch = 10
