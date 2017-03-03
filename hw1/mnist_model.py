@@ -103,6 +103,7 @@ if __name__ == "__main__":
         num_unlabeled_epochs = config.get('training', {}).get('num_unlabeled_epochs', 10)
 
         unlabeled_model.start_train()
+        logger.info('running unlabeled training for %d epochs', num_unlabeled_epochs + 1)
         for epoch in range(1, num_unlabeled_epochs + 1):
             # Single epoch, unlabeled mode
             minibatches = unlabeled_provider.loader
@@ -111,7 +112,7 @@ if __name__ == "__main__":
                 unlabeled_model.train_batch(data)
                 if batch_idx % 5 == 0:
                     print('Pretrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        current_epoch, batch_idx * len(data), unlabeled_size,
+                        epoch, batch_idx * len(data), unlabeled_size,
                                100. * batch_idx / len(train_loader), loss))
             unlabeled_model.epoch_done()
         unlabeled_model.training_done()

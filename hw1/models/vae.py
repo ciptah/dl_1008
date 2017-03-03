@@ -7,6 +7,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
+import torchvision
 from torch.autograd import Variable
 
 import logging
@@ -21,7 +23,7 @@ def norm_pdf(mean, logvar, v):
     """Computes multivariate gaussian pdf."""
     # Minibatch compatible.
     exponent = torch.sum(-0.5 * (mean - v).abs().pow(2).div(logvar.exp()), 1)
-    loglike = -0.5 * torch.sum(x_logvar.add(LOGPI + LOG2), 1).add(exponent)
+    loglike = -0.5 * torch.sum(logvar.add(LOGPI + LOG2), 1).add(exponent)
     return loglike
 
 def kl_div_with_std_norm(mean, logvar):
@@ -29,6 +31,11 @@ def kl_div_with_std_norm(mean, logvar):
     x = torch.sum(mean.mul(mean).sub(1).sub(logvar), 1)
     tr = torch.sum(logvar.exp(), 1)
     return tr.add(x) / 2
+
+def imshow(img):
+    img = img / 2 + 0.5 # unnormalize
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1,2,0)))
 
 class VAEDecoder(nn.Module):
     """The decoder generates X (an MNIST image) from z (latent variables).
@@ -94,7 +101,7 @@ class VAEEncoder(nn.Module):
 
         # Refer to basic_net.py for an explanation of this ConvNet.
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2(x)), 2)
+        x = F.relu(F.max_pool2d(self.conv2(x), 2))
         x = x.view(-1, 320)
         x = F.relu(self.fc1(x))
         mean = self.mean(x)
@@ -194,19 +201,27 @@ class VAETrainer:
         self.optimizer.zero_grad()
         loss, reconstructed_data = self.model(data)
         minibatch_loss = loss.mean()
-        minibatch_.backward() # Specifically, it's here.
+        minibatch_loss.backward() # Specifically, it's here.
         self.optimizer.step()
 
-        self.last_minibatch = (minibatch_loss, data, reconstructed_data)
-        return minibatch_loss, loss, reconstructed_data
+        reconstructed_image = reconstructed_data.view_as(data)
+        self.last_minibatch = (minibatch_loss, data, reconstructed_image)
+        return minibatch_loss, loss, reconstructed_image
 
     def epoch_done(self):
         self.history.append(self.last_minibatch)
         self.last_minibatch = None
 
     def training_done(self):
-        # TODO: Print out nice pictures.
-        pass
+        images_per_epoch = 4
+        tensors = []
+        for epoch_data in self.history:
+            mloss, data, reconst = epoch_data
+            tensors.append(data[:images_per_epoch,:,:,:])
+            tensors.append(reconst[:images_per_epoch,:,:,:])
+        res = torch.cat(tensors)
+        logger.debug('Image grid size: %s', res.size())
+        torchvision.utils.save_image(res, 'vae.png', nrow=images_per_epoch)
 
 def vae(config):
     return VAETrainer(config)
