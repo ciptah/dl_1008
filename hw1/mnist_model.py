@@ -94,6 +94,33 @@ if __name__ == "__main__":
     num_epochs = config.get('training', {}).get('num_epochs', 10)
     logger.info('running for %d epochs', num_epochs)
 
+    # unlabeled training
+    unlabeled_model = predictive_model.get_unlabeled_model(config)
+    if unlabeled_model != None:
+        unlabeled_provider = data_provider.UnlabeledProvider()
+        unlabeled_size = len(unlabeled_provider.dataset.train_data)
+        logger.info('unlabeled provider loaded, %d examples', unlabeled_size)
+        num_unlabeled_epochs = config.get('training', {}).get('num_unlabeled_epochs', 10)
+
+        unlabeled_model.start_train()
+        logger.info('running unlabeled training for %d epochs', num_unlabeled_epochs + 1)
+        for epoch in range(1, num_unlabeled_epochs + 1):
+            # Single epoch, unlabeled mode
+            minibatches = unlabeled_provider.loader
+            for batch_idx, (data, unused_) in enumerate(minibatches):
+                data = Variable(data)
+                loss = unlabeled_model.train_batch(data)
+                if batch_idx % 5 == 0:
+                    print('Pretrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                        epoch, batch_idx * len(data), unlabeled_size,
+                               100. * batch_idx / len(minibatches), loss))
+            unlabeled_model.epoch_done(epoch - 1)
+        unlabeled_model.training_done()
+
+    if config.get('skip_labeled_training', False):
+        logger.info('skipping labeled training.')
+        sys.exit(0)
+
     # start training
     model = predictive_model.PredictiveModel(config)
     for epoch in range(1, num_epochs + 1):
