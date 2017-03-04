@@ -86,17 +86,18 @@ class VAEEncoder(nn.Module):
         self.nonl = nonl
 
         # TODO: Configurable sizes/channels/parameters.
-        conv1_channels = 10
-        conv2_channels = 20
         self.fc_sizes = [200, 200, 200, 200]
 
         width = 28
         self.conv_settings = [(1, 1), (5, 10), (5, 20)]
         self.conv = []
-        for i, (kernel, channel) in enumerate(self.conv_settings[1:]):
-            prev_channel = self.conv_settings[i-1][0]
-            setattr(self, 'conv_{}'.format(i),
-                    nn.Conv2d(prev_channel, channel, kernel_size=kernel))
+        for prev_i, (kernel, channel) in enumerate(self.conv_settings[1:]):
+            i = prev_i + 1
+            prev_channel = self.conv_settings[prev_i][1]
+            logger.debug('conv: %d, %d, %d', prev_channel, channel, kernel)
+            conv = nn.Conv2d(prev_channel, channel, kernel_size=kernel)
+            self.conv.append(conv)
+            setattr(self, 'conv_{}'.format(i), conv)
             width = (width - (kernel - 1)) / 2
             logger.info('conv_%d: %dx%d on %dx%d', i, kernel, kernel, width, width)
         self.conv_out_dim = int(width * width * self.conv_settings[-1][1])
@@ -114,14 +115,11 @@ class VAEEncoder(nn.Module):
         self.mean = nn.Linear(prev_dim, k)
         self.logvar = nn.Linear(prev_dim, k)
 
-        logger.info('encoder:%d channels for 1st convnet', conv1_channels)
-        logger.info('encoder:%d channels for 2nd convnet', conv2_channels)
-
     def forward(self, x, fc_limit=10):
         # Refer to basic_net.py for an explanation of this ConvNet.
         if self.use_convnets:
             for conv in self.conv:
-                x = self.nonl(F.max_pool2d(conv1(x), 2))
+                x = self.nonl(F.max_pool2d(conv(x), 2))
             x = x.view(-1, self.conv_out_dim)
             x = self.nonl(self.conv_to_fc(x))
         else:
