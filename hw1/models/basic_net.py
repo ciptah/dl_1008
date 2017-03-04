@@ -4,10 +4,21 @@ Module that contains the basic neural net model.
 import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
-
+import torch
 import logging
 
 logger = logging.getLogger('basic_net')
+
+class CMul(nn.Module):
+    """
+    This net implements element-wise add and multiplication 
+    """
+    def __init__(self, tensor_size):
+        super(CMul, self).__init__()
+        self.beta = nn.Parameter(torch.randn(1, tensor_size))
+        
+    def forward(self, x):
+        return (x + self.beta.expand(x.size()))
 
 class Net(nn.Module):
     """
@@ -35,6 +46,7 @@ class Net(nn.Module):
 
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
+        self.plus = CMul(10)
 
         self.prelu = prelu
         if prelu:
@@ -77,7 +89,11 @@ class Net(nn.Module):
         x = F.dropout(x, p=self.dropout, training=self.training)
         # FC: 50->10
         x = self.relu(self.fc2(x), self.fc2_prelu)
+        #x = self.plus(x)
         return F.log_softmax(x)
+
+    def loss_func(self, output, target):
+        return F.nll_loss(output, target)
 
 def basicNet(config):
     dropout = config.get('training', {}).get('dropout', '0.5')
