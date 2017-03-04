@@ -40,8 +40,6 @@ class UnlabeledProvider:
             self.dataset = pickle.load(f)
         self.dataset.train_labels = torch.zeros(47000)
         self.dataset.transform = transforms.Compose([
-            transforms.RandomCrop(26),
-            transforms.Pad(1),
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])
