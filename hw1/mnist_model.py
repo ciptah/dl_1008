@@ -8,9 +8,62 @@ import pickle
 import numpy as np
 import pandas as pd
 import os
+from scipy.ndimage.interpolation import map_coordinates
+from scipy.ndimage.filters import gaussian_filter
+import matplotlib.pyplot as plt
+from scipy import ndimage
+from PIL import Image
+import torch
 
 
-def train_epoch(model, train_data_provider, current_epoch, report_period=100, unlablled=False):
+def elastic_transform(image, alpha, sigma, random_state=None):
+    if random_state is None:
+        random_state = np.random.RandomState(None)
+
+    shape = image.shape
+    dx = gaussian_filter((random_state.rand(*shape) * 2 - 1), sigma, mode="constant", cval=0) * alpha
+    dy = gaussian_filter((random_state.rand(*shape) * 2 - 1), sigma, mode="constant", cval=0) * alpha
+
+    x, y = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]))
+    indices = np.reshape(y + dy, (-1, 1)), np.reshape(x + dx, (-1, 1))
+
+    return map_coordinates(image, indices, order=1).reshape(shape)
+
+
+def preprocess_img(img, width, height, limits_ranslate=(-3, 3), limits_rotate=(-20, 20)):
+    # add noise
+    img += np.random.normal(scale=0.2, size=(width, height))
+
+    # translation
+    dx = np.random.choice(range(limits_ranslate[0], limits_ranslate[1] + 1))
+    dy = np.random.choice(range(limits_ranslate[0], limits_ranslate[1] + 1))
+    img[:, :] = ndimage.interpolation.shift(img, (dx, dy))
+
+    # rotation
+    degree = np.random.choice(range(limits_rotate[0], limits_rotate[1] + 1))
+    ndimage.rotate(img, degree, reshape=False, output=img[:, :])
+
+    # elastic distrotion
+    img[:, :] = elastic_transform(img, 36, 8)
+    # return img_arr
+
+
+def default_augmentation(data):
+    batch_num = data.size()[0]
+    width = data.size()[2]
+    height = data.size()[3]
+
+    data = data.data.numpy()
+    # output = np.ones((batch_num,1,width,height))
+    for i in range(0, batch_num):
+        # output[i,0,:,:] = preprocess_img(data[i,0,:,:], width, height)
+        preprocess_img(data[i, 0, :, :], width, height)
+
+        # return Variable(torch.Tensor(output))
+
+
+def train_epoch(model, train_data_provider, current_epoch, report_period=100, unlablled=False,
+                aug_funct=default_augmentation):
     """
     Function that trains a model for one epoch
     :param model:
@@ -24,6 +77,8 @@ def train_epoch(model, train_data_provider, current_epoch, report_period=100, un
     correct_num = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = Variable(data), Variable(target)
+        if aug_funct is not None:
+            aug_funct(data)
         pred_dist, loss = model.train_batch(data, target)
         if not unlablled:
             pred = pred_dist[0].data.max(1)[1]
@@ -123,15 +178,18 @@ if __name__ == "__main__":
     # start training
     model = predictive_model.PredictiveModel(config)
     save_dir = "./data/model/"
-    save_name = "SWWAE"
+    save_name = "net_pl"
     try:
         best_acc = 0
         for epoch in range(1, 2000):
+            model.model.current_epoch_num = epoch
             model.start_train()
             train_epoch(model, train_provider, epoch)
-            train_epoch(model, train_unlabeled, epoch, unlablled=True)
+            # if epoch>0:
+            #    train_epoch(model, train_unlabeled, epoch, unlablled=True)
             model.start_prediction()
             acc = validate_model(model, validation_provider)
+
             print("Epoch {0}, validation acc = {1}".format(epoch, acc))
             if acc > best_acc:
                 pickle.dump(model, open(os.path.join(save_dir, "{0}_best.p".format(save_name)), "wb"))

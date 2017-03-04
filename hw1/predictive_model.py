@@ -7,18 +7,34 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 
+def default_pseudo_label_func(unlabel, t):
+    T1 = 100
+    T2 = 300
+    alpha_f = 3.0
+    if not unlabel:
+        return 1
+    else:
+        if t < T1:
+            return 0
+        elif t < T2:
+            return float(t-T1)/(T2-T1)*alpha_f
+        else:
+            return alpha_f
+
 
 class Net(nn.Module):
     """
     Sample Model
     """
-    def __init__(self):
+    def __init__(self, psuedo_label_alpha_func=None):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
         self.conv2_drop = nn.Dropout2d()
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
+        self.psuedo_label_alpha_func = psuedo_label_alpha_func
+        self.current_epoch_num = 1
 
     def forward(self, x):
         # x: 64 * 1 * 28 * 28
@@ -33,18 +49,33 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = F.relu(self.fc2(x))
-        return F.log_softmax(x)
+        return [F.log_softmax(x)]
 
     def loss_func(self, output, target):
-        return [F.nll_loss(output, target)]
+        unlabel_epoch = (-1 in target.data)
+        if unlabel_epoch:
+            if self.psuedo_label_alpha_func is not None:
+                max_class = output[0].data.max(1)[1]
+                max_class = max_class.view(-1)
+                target = Variable(max_class)
+            loss_nll = F.nll_loss(output[0], target)
+        else:
+            loss_nll = F.nll_loss(output[0], target)
+        if self.psuedo_label_alpha_func is not None:
+            loss_nll *= self.psuedo_label_alpha_func(unlabel_epoch, self.current_epoch_num)
+        return loss_nll
 
 
 class SWWAE(nn.Module):
     """
     Stacked What-Where Auto-Encoders
     """
-    def __init__(self, lambda_rec=0.41, lambda_m=0.41):
+    def __init__(self, lambda_rec=0.41, lambda_m=0.41, psuedo_label_alpha_func=None):
         super(SWWAE, self).__init__()
+        # algorithm specific variables
+        self.psuedo_label_alpha_func = psuedo_label_alpha_func
+        self.current_epoch_num = 0
+
         # init var
         self.lambda_rec = lambda_rec
         self.lambda_m = lambda_m
@@ -75,6 +106,7 @@ class SWWAE(nn.Module):
         x_out = F.relu(self.encoder_fc1(x_out))
         x_out = F.dropout(x_out, training=self.training)
         x_out = F.relu(self.encoder_fc2(x_out))
+        #x_out = F.dropout(x_out, training=self.training)
         x_out = F.log_softmax(x_out)
 
         # decoder
@@ -89,13 +121,17 @@ class SWWAE(nn.Module):
         x_out, x_encode_m1, x_decode_m1, x_rec, x = output
         n = x.size()[0]
         # unsupervised samples should have -1 label
-        # pseudo-label
-        # if -1 in target.data:
-        #     max_class = x_out.data.max(1)[1]
-        #     max_class = max_class.view(-1)
-        #     target = Variable(max_class)
-        # loss_nll = F.nll_loss(x_out, target)
-        loss_nll = F.nll_loss(x_out, target) if -1 not in target.data else 0
+        unlabel_epoch = (-1 in target.data)
+        # pseudo-label nll loss
+        if self.psuedo_label_alpha_func is not None:
+            if unlabel_epoch:
+                max_class = x_out.data.max(1)[1]
+                max_class = max_class.view(-1)
+                target = Variable(max_class)
+            loss_nll = F.nll_loss(x_out, target)
+        # normal nll loss
+        else:
+            loss_nll = 0 if unlabel_epoch else F.nll_loss(x_out, target)
         # L2m
         sq_diff_m1 = (x_encode_m1-x_decode_m1)**2
         sq_diff_m1 = sq_diff_m1.view(n,-1)
@@ -106,7 +142,11 @@ class SWWAE(nn.Module):
         sq_diff_rec = sq_diff_rec.view(n,-1)
         rec_dim = sq_diff_rec.size()[1]
         loss_rec = sq_diff_rec.sum(1).sum() / n / rec_dim
-        return loss_nll + self.lambda_m * loss_m1 + self.lambda_rec * loss_rec
+        # total loss
+        total_loss = loss_nll + self.lambda_m * loss_m1 + self.lambda_rec * loss_rec
+        if self.psuedo_label_alpha_func is not None:
+            total_loss *= self.psuedo_label_alpha_func(unlabel_epoch, self.current_epoch_num)
+        return total_loss
 
 
 class EnsembleModel:
@@ -158,7 +198,9 @@ class PredictiveModel:
     def __init__(self, config):
         self.config = config
         #self.model = Net()
-        self.model = SWWAE()
+        self.model = Net(psuedo_label_alpha_func=default_pseudo_label_func)
+        #self.model = SWWAE(psuedo_label_alpha_func=default_pseudo_label_func)
+        #self.model = SWWAE(psuedo_label_alpha_func=default_pseudo_label_func)
         self.optimizer = optim.SGD(self.model.parameters(), lr=0.01, momentum=0.05)
 
     def start_train(self):
