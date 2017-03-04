@@ -54,8 +54,8 @@ class VAEDecoder(nn.Module):
             self.fcs.append(fc)
             prev_dim = sz
 
-        self.mean = nn.Linear(prev_dim, MNIST_SIZE)
-        self.logvar = nn.Linear(prev_dim, MNIST_SIZE)
+        self.mean = nn.Linear(self.fc_sizes[0], MNIST_SIZE)
+        self.logvar = nn.Linear(self.fc_sizes[0], MNIST_SIZE)
         # Following Kingma's example we output log(var(x)) instead of var(x).
 
         logger.info('decoder: %d (z) -> %s -> %d (MNIST)',
@@ -90,9 +90,17 @@ class VAEEncoder(nn.Module):
         conv2_channels = 20
         self.fc_sizes = [200, 200, 200, 200]
 
-        self.conv1 = nn.Conv2d(1, conv1_channels, kernel_size=5)
-        self.conv2 = nn.Conv2d(conv1_channels, conv2_channels, kernel_size=3)
-        self.conv_out_dim = 320
+        width = 28
+        self.conv_settings = [(1, 1), (5, 10), (5, 20)]
+        self.conv = []
+        for i, (kernel, channel) in enumerate(self.conv_settings[1:]):
+            prev_channel = self.conv_settings[i-1][0]
+            setattr(self, 'conv_{}'.format(i),
+                    nn.Conv2d(prev_channel, channel, kernel_size=kernel))
+            width = (width - (kernel - 1)) / 2
+            logger.info('conv_%d: %dx%d on %dx%d', i, kernel, kernel, width, width)
+        self.conv_out_dim = int(width * width * self.conv_settings[-1][1])
+        logger.info('conv: 1x28x28 --> %s', self.conv_out_dim)
         self.conv_to_fc = nn.Linear(self.conv_out_dim, self.fc_sizes[0])
 
         self.straight_to_fc = nn.Linear(MNIST_SIZE, self.fc_sizes[0])
@@ -112,8 +120,8 @@ class VAEEncoder(nn.Module):
     def forward(self, x, fc_limit=10):
         # Refer to basic_net.py for an explanation of this ConvNet.
         if self.use_convnets:
-            x = self.nonl(F.max_pool2d(self.conv1(x), 2))
-            x = self.nonl(F.max_pool2d(self.conv2(x), 2))
+            for conv in self.conv:
+                x = self.nonl(F.max_pool2d(conv1(x), 2))
             x = x.view(-1, self.conv_out_dim)
             x = self.nonl(self.conv_to_fc(x))
         else:
@@ -121,6 +129,7 @@ class VAEEncoder(nn.Module):
 
         for fc in self.fcs[(-fc_limit):]:
             x = self.nonl(fc(x))
+
         mean = self.mean(x)
         logvar = self.logvar(x)
         return mean, logvar
@@ -281,19 +290,20 @@ class VAETrainer:
         return minibatch_loss.data[0]
 
     def epoch_done(self, epoch_id):
-        if epoch_id % self.image_per == 0:
-            loss, data, reconst = self.last_minibatch
-            diff = (data - reconst)
-            self.history.append((data, reconst, diff * diff))
-            self.last_minibatch = None
+        loss, data, reconst = self.last_minibatch
+        diff = (data - reconst)
+        self.history.append((data, reconst, diff * diff))
+        self.last_minibatch = None
 
     def training_done(self):
         def denorm(x):
             return x.mul(NORM_STD).add(NORM_MEAN).clamp(MIN, MAX)
         images_per_epoch = 10
         tensors = []
-        for epoch_data in self.history[-10:]:
+        for i, epoch_data in enumerate(self.history[-50:]):
             data, reconst, diff = epoch_data
+            if i % self.image_per != 0:
+                continue
             tensors.append(denorm(data[:images_per_epoch,:,:,:]))
             tensors.append(denorm(reconst[:images_per_epoch,:,:,:]))
             #tensors.append(denorm(diff[:images_per_epoch,:,:,:]))
@@ -301,6 +311,9 @@ class VAETrainer:
         logger.debug('Image grid size: %s', res.size())
         torchvision.utils.save_image(res, self.image_file_name, nrow=images_per_epoch)
         torch.save(self.model, self.model_file_name)
+        logger.debug('Saved model to %s', self.model_file_name)
+
+        logger.info('this model has gone through %d minibatches', self.model.counter)
 
 def get_nonl(config):
     return {

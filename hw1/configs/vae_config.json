@@ -5,16 +5,18 @@
 
   "training": {
     "learning_rate": 2e-4,
-    "num_unlabeled_epochs": 25,
+    "num_unlabeled_epochs": 5,
     "nonlinearity": "softplus"
   },
 
   "vae": {
     "num_latent_vars": 40,
-    "image_per": 2
+    "image_per": 2,
     "continue": false,
-    "use_convnets": false,
+    "use_convnets": true,
     "fc_limit": 1,
-    "kl_multiplier": 1
+    "kl_multiplier": 1,
+    "image_file_name": "vae_40_1200.png",
+    "model_file_name": "vae_40_1200.torch.tar"
   }
 }
