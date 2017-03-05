@@ -172,21 +172,25 @@ if __name__ == "__main__":
     logger.info('train unlabelled provider loaded')
     validation_provider = data_provider.DataProvider(file_dir="validation_data.p", train=False)
     logger.info('validation provider loaded')
-    pred_label = data_provider.DataProvider(file_dir="test.p", train=False)
-    logger.info('test provider loaded')
+    #pred_label = data_provider.DataProvider(file_dir="test.p", train=False)
+    #logger.info('test provider loaded')
+
+    # Num of epochs
+    num_epochs = config.get('training', {}).get('num_epochs', 10)
+    logger.info('running for %d epochs', num_epochs)
 
     # start training
     model = predictive_model.PredictiveModel(config)
     save_dir = "./data/model/"
-    save_name = "net_pl"
+    save_name = config.get('model', 'basic')
     try:
         best_acc = 0
         for epoch in range(1, 2000):
             model.model.current_epoch_num = epoch
             model.start_train()
             train_epoch(model, train_provider, epoch)
-            # if epoch>0:
-            #    train_epoch(model, train_unlabeled, epoch, unlablled=True)
+            if epoch > 200:
+                train_epoch(model, train_unlabeled, epoch, unlablled=True)
             model.start_prediction()
             acc = validate_model(model, validation_provider)
 
@@ -205,4 +209,5 @@ if __name__ == "__main__":
         logger.info('model saved to {0}'.format(os.path.join(save_dir, "{0}_latest.p".format(save_name))))
 
     # save model
-    pickle.dump(model, open("sample_save_model.m", "wb"))
+    with open('sample_save_model.m', 'wb') as save_file:
+        pickle.dump(model, save_file)
