@@ -4,6 +4,7 @@ Module that contains all code to pre-process and provide data for a predicitve m
 import torch
 import pickle
 from torchvision import datasets, transforms
+import numpy as np
 
 
 class DataProvider:
@@ -24,4 +25,4 @@ class DataProvider:
                 self.dataset = pickle.load(f)
 
         # create loader
-        self.loader = torch.utils.data.DataLoader(self.dataset,batch_size=batch_size, shuffle=self.train)
+        self.loader = torch.utils.data.DataLoader(self.dataset, batch_size=batch_size, shuffle=self.train)

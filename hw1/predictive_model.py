@@ -1,13 +1,13 @@
 """
 Module that contains all code for the MNIST predictive model
 """
-import torch.nn.functional as F
-import torch.optim as optim
 
+import torch.optim as optim
 import constants
 import logging
 
 logger = logging.getLogger('predictive_model')
+
 
 class PredictiveModel:
     """
@@ -16,17 +16,18 @@ class PredictiveModel:
     def __init__(self, config):
         learning_rate = config['training']['learning_rate']
         momentum = config['training']['momentum']['mu_coefficient']
-
         self.config = config
-
-        model = config.get('model', 'basic')
-        logger.info('Using model "%s".', model)
-        self.model = constants.models[model](config)
-
+        #self.model = Net()
+        #self.model = Net(psuedo_label_alpha_func=default_pseudo_label_func)
+        #self.model = SWWAE(psuedo_label_alpha_func=default_pseudo_label_func)
+        #self.model = SWWAE(psuedo_label_alpha_func=default_pseudo_label_func)
+        #self.optimizer = optim.SGD(self.model.parameters(), lr=0.01, momentum=0.05)
+        model_name = config.get('model', 'basic')
+        logger.info('Using model "%s".', model_name)
+        self.model = constants.models[model_name](config)
         # TODO: optimization method should probably be configurable too.
         self.optimizer = optim.SGD(self.model.parameters(),
                 lr=learning_rate, momentum=momentum)
-        self.loss_func = F.nll_loss
 
     def start_train(self):
         self.model.train()
@@ -42,9 +43,13 @@ class PredictiveModel:
         :param kwargs:
         :return:
         """
+        # data: 64 * 1 * 28 * 28
+        # target: 64
         self.optimizer.zero_grad()
         output = self.model(data)
-        loss = self.loss_func(output, target)
+        # output: 64 * 10
+        loss = self.model.loss_func(output, target)
+        # loss:  (1,)
         loss.backward()
         self.optimizer.step()
         return output, loss.data[0]
@@ -57,7 +62,7 @@ class PredictiveModel:
         :return:
         """
         output, pred = self.predict_batch(data)
-        loss_val = self.loss_func(output, target).data[0]
+        loss_val = self.model.loss_func(output, target).data[0]
         return output, pred, loss_val
 
     def predict_batch(self, data):
@@ -67,7 +72,7 @@ class PredictiveModel:
         :return:
         """
         output = self.model(data)
-        pred = output.data.max(1)[1]  # get the index of the max log-probability
+        pred = output[0].data.max(1)[1]  # get the index of the max log-probability
         return output, pred
 
 
