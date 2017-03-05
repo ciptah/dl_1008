@@ -7,16 +7,15 @@ from torch.autograd import Variable
 import pickle
 
 
-def train_epoch(model, train_data_provider, current_epoch, report_period=10):
+def train_epoch(model, train_loader, current_epoch, report_period=10):
     """
     Function that trains a model for one epoch
     :param model:
-    :param train_data_provider:
+    :param train_loader:
     :param current_epoch:
     :param report_period:
     :return:
     """
-    train_loader = train_data_provider.loader
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = Variable(data), Variable(target)
         pred, loss = model.train_batch(data, target)
@@ -84,6 +83,34 @@ if __name__ == "__main__":
     # parse config
     config = build_config(config_filename, logger)
 
+    # unlabeled training
+    if not config.get('skip_unlabeled_training'):
+        unlabeled_model = predictive_model.get_unlabeled_model(config)
+        if unlabeled_model != None:
+            unlabeled_provider = data_provider.DataProvider('train_unlabeled.p')
+            unlabeled_size = len(unlabeled_provider.dataset.train_data)
+            logger.info('unlabeled provider loaded, %d examples', unlabeled_size)
+            num_unlabeled_epochs = config.get('training', {}).get('num_unlabeled_epochs', 10)
+
+            unlabeled_model.start_train()
+            logger.info('running unlabeled training for %d epochs', num_unlabeled_epochs + 1)
+            for epoch in range(1, num_unlabeled_epochs + 1):
+                # Single epoch, unlabeled mode
+                minibatches = unlabeled_provider.loader
+                for batch_idx, (data, unused_) in enumerate(minibatches):
+                    data = Variable(data)
+                    loss = unlabeled_model.train_batch(data)
+                    if batch_idx % 5 == 0:
+                        print('Pretrain Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                            epoch, batch_idx * len(data), unlabeled_size,
+                                   100. * batch_idx / len(minibatches), loss))
+                unlabeled_model.epoch_done(epoch - 1)
+            unlabeled_model.training_done()
+
+    if config.get('skip_labeled_training', False):
+        logger.info('skipping labeled training.')
+        sys.exit(0)
+
     # load data
     train_provider = data_provider.DataProvider(file_dir="train_labeled.p", train=True)
     logger.info('train provider loaded')
@@ -96,9 +123,12 @@ if __name__ == "__main__":
 
     # start training
     model = predictive_model.PredictiveModel(config)
+    augmented_loader = predictive_model.augment_training_data(
+            config, train_provider.loader)
     for epoch in range(1, num_epochs + 1):
         model.start_train()
-        train_epoch(model, train_provider, epoch)
+        train_loader = train_provider.loader
+        train_epoch(model, augmented_loader, epoch)
         model.start_prediction()
         validate_model(model, validation_provider)
 

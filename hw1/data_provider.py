@@ -3,8 +3,10 @@ Module that contains all code to pre-process and provide data for a predicitve m
 """
 import torch
 import pickle
+import logging
 from torchvision import datasets, transforms
 
+logger = logging.getLogger('DataProvider')
 
 class DataProvider:
     """
@@ -15,11 +17,13 @@ class DataProvider:
 
         # load dataset
         if file_dir is None:
+            logger.info('Downloading dataset using torchvision')
             self.dataset = datasets.MNIST('.', download=True, train=self.train, transform=transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,))
             ]))
         else:
+            logger.info('opening pickle file at %s', file_dir)
             with open(file_dir, "rb") as f:
                 self.dataset = pickle.load(f)
 
