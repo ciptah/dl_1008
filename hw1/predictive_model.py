@@ -8,8 +8,8 @@ from torch.autograd import Variable
 
 
 def default_pseudo_label_func(unlabel, t):
-    T1 = 100
-    T2 = 300
+    T1 = 200
+    T2 = 800
     alpha_f = 3.0
     if not unlabel:
         return 1
