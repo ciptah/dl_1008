@@ -6,10 +6,11 @@
     "dropout": 0.4,
     "num_epochs": 3,
     "PReLU": true,
-
     "momentum": {
       "mu_coefficient": 0.05,
       "use_nesterov": false
     }
-  }
+  },
+
+    "model": "swwae"
 }
