@@ -1,0 +1,58 @@
+\documentclass[a4paper]{article}
+
+%% Language and font encodings
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+
+%% Sets page size and margins 
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+%% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+
+\begin{document}
+
+\setcounter{section}{2}
+\setcounter{subsection}{2}
+
+\subsection{Initialization}
+
+\begin{enumerate}
+
+\item The two methods propose initialization schemes with two goals: prevent saturation during forward propagation and prevent exploding/vanishing gradients. The problem is that the variance of each successive activations is a product of the variances of the previous layers so they can grow/shrink exponentially if not controlled. The same goes for variance of gradients during backpropagation.
+
+\begin{itemize}
+\item The Xavier method \cite{glorot2010understanding} assumes a symmetric activation function like $\tanh$, and that the derivative of the function is 1 nearby the initialization mean (chosen as zero). Based on these assumptions the team arrives at the constraints $n_i Var (W_i) = 1$ and $n_{i+1} Var (W_i) = 1$. The initialization samples $W$ from a uniform distribution with mean 0 and variance that best satisfies both constraints.
+
+\item He et al. \cite{he2015delving} assumes the ReLU activation function,  which isn't symmetric and therefore violates the assumption of the Xavier method. By doing a derivation specific to ReLU He et al. arrive at the constraints $\frac{1}{2} n_i Var(W_i) = 1$ and $\frac{1}{2} n_{i+1} Var(W_i) = 1$. This results in a more varied initialization, which makes sense because ReLU effectively silences half of the variance.
+
+Incidentally, the initialization uses a Gaussian instead of a uniform distribution, although that isn't due to the difference in basic assumptions.
+
+\end{itemize}
+
+\item Various methods of initialization.
+\begin{itemize}
+
+\item The VGG team \cite{simonyan2014very} pre-trains a shallow network from random initialization. Then, when training a deeper network, the parameters for the first few conv layers and the final fully-connected layers are initialized from the small network.
+
+Another way they use pre-training is when training with multiple scales. When training a model with more "zoomed-in" images (images are shrunk less before cropping), parameters are initialized with the results on training on more zoomed-out images that learned coarser features of an image.
+
+Similarly, when training images on random, variable scales, parameters are initialized from the fixed-scale model. So the team reuses parameters of a simpler model to initialize training for more complicated ones.
+
+\item Coates et al. \cite{coates2010analysis} proposed a general framework for doing unsupervised pre-training that works nicely with ConvNets. First, extract random patches from the input images. Then, normalize the patches. Then, run the examples through an unsupervised learning algorithm of parameter $K$.
+
+The exact meaning of $K$ depends on the type of unsupervised algorithm. It might mean the number of clusters in K-means or hidden nodes in a sparse auto-encoder. The important thing is to learn a function to describe an $N$-sized patch with $K$ values. The function is then used as the filter in a convolutional network to classify the images, where $K$ becomes the number of output channels from each patch.
+
+\end{itemize}
+
+\end{enumerate}
+
+\bibliographystyle{alpha}
+\bibliography{references}
+
+\end{document}
+

@@ -4,12 +4,13 @@
   "training": {
     "learning_rate": 0.001,
     "dropout": 0.4,
-    "num_epochs": 39,
+    "num_epochs": 3,
     "PReLU": false,
-
     "momentum": {
       "mu_coefficient": 0.5,
       "use_nesterov": false
     }
-  }
+  },
+
+    "model": "ladder"
 }

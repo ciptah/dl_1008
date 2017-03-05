@@ -1,27 +1,12 @@
 """
 Module that contains all code for the MNIST predictive model
 """
-import torch.nn.functional as F
-import torch.optim as optim
 
+import torch.optim as optim
 import constants
 import logging
 
 logger = logging.getLogger('predictive_model')
-
-def default_pseudo_label_func(unlabel, t):
-    T1 = 100
-    T2 = 300
-    alpha_f = 3.0
-    if not unlabel:
-        return 1
-    else:
-        if t < T1:
-            return 0
-        elif t < T2:
-            return float(t-T1)/(T2-T1)*alpha_f
-        else:
-            return alpha_f
 
 class PredictiveModel:
     """
@@ -30,17 +15,13 @@ class PredictiveModel:
     def __init__(self, config):
         learning_rate = config['training']['learning_rate']
         momentum = config['training']['momentum']['mu_coefficient']
-
         self.config = config
-
-        model = config.get('model', 'ladder')
-        logger.info('Using model "%s".', model)
-        self.model = constants.models[model](config)
-
+        model_name = config.get('model', 'basic')
+        logger.info('Using model "%s".', model_name)
+        self.model = constants.models[model_name](config)
         # TODO: optimization method should probably be configurable too.
         self.optimizer = optim.SGD(self.model.parameters(),
                 lr=learning_rate, momentum=momentum)
-        
 
     def start_train(self):
         self.model.train()
