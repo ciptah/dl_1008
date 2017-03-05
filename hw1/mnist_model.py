@@ -3,6 +3,7 @@ import json
 import logging
 import predictive_model
 import data_provider
+from config import build_config
 from torch.autograd import Variable
 import pickle
 
@@ -47,28 +48,6 @@ def validate_model(model, test_data_provider):
         100. * correct / len(test_loader.dataset)))
 
 
-def build_config(config_filename, logger):
-    """
-    Function that builds a config object from file
-    :param config_filename:
-    :param logger:
-    :return:
-    """
-    with open(config_filename, 'r') as f:
-        config_json = json.load(f)
-
-    logger.info('Loaded JSON config from %s', config_filename)
-
-    if config_json.get('verbose', False):
-        logging.basicConfig(level=logging.DEBUG)
-        logger.debug('Turning on verbose logging.')
-    else:
-        # Default log level is info.
-        logging.basicConfig(level=logging.INFO)
-
-    logger.debug('CONFIGURATION: %s', json.dumps(config_json, indent=2))
-    return config_json
-
 
 if __name__ == "__main__":
     # initialization
@@ -87,7 +66,7 @@ if __name__ == "__main__":
     if not config.get('skip_unlabeled_training'):
         unlabeled_model = predictive_model.get_unlabeled_model(config)
         if unlabeled_model != None:
-            unlabeled_provider = data_provider.DataProvider('train_unlabeled.p')
+            unlabeled_provider = data_provider.DataProvider('train_unlabeled.p', train=True)
             unlabeled_size = len(unlabeled_provider.dataset.train_data)
             logger.info('unlabeled provider loaded, %d examples', unlabeled_size)
             num_unlabeled_epochs = config.get('training', {}).get('num_unlabeled_epochs', 10)

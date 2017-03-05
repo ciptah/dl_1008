@@ -39,6 +39,9 @@ def cross_entropy(mean, v):
     v = (v - MIN) / (MAX - MIN)
     return (v * mean.log() + (1 - v) * (1 - mean).log()).view(-1, MNIST_SIZE).sum(1)
 
+def logsumexp(x1, x2):
+    return torch.log(torch.exp(x2) + x1)
+
 def kl_div_with_std_norm(mean, logvar):
     """KL divergence with standard multivariate normal. Consumes both inputs"""
     return torch.squeeze(torch.sum(logvar.exp() + mean * mean - logvar - 1, 1) / 2)
@@ -58,20 +61,20 @@ class VAEDecoder(nn.Module):
         self.fc = nn.Linear(k, 64 * 4 * 4)
         self.convt1 = nn.ConvTranspose2d(64, 16, 5, stride=2)
         self.convt2 = nn.ConvTranspose2d(16, 4, 4, stride=2)
-        self.convt3 = nn.ConvTranspose2d(4, 2, 5)
+        self.convt3 = nn.ConvTranspose2d(4, 1, 5)
 
-    def forward(self, z, fc_limit=10):
+        self.var_convt3 = nn.ConvTranspose2d(4, 1, 5)
+
+    def forward(self, z):
         # Input is K-dim vector.
         h = self.nonl(self.fc(z))
         i = h.view(-1, 64, 4, 4)
 
         i = self.nonl(self.convt1(i))
         i = self.convt2(i)
-        i = self.convt3(i)
 
-        # No nonlinearities; preserve 
-        mean = i.select(1, 0).unsqueeze(1)
-        logvar = i.select(1, 1).unsqueeze(1)
+        mean = self.convt3(i)
+        logvar = self.var_convt3(i)
         return mean, logvar
 
 class VAEEncoder(nn.Module):
@@ -96,7 +99,7 @@ class VAEEncoder(nn.Module):
         self.mean = nn.Linear(self.fc_dim, k)
         self.logvar = nn.Linear(self.fc_dim, k)
 
-    def forward(self, x, fc_limit=10):
+    def forward(self, x):
         x = self.nonl(self.conv1(x))
         x = self.nonl(F.max_pool2d(self.conv2(x), 2))
         x = self.nonl(F.max_pool2d(self.conv3(x), 2))
@@ -159,8 +162,8 @@ class VAE(nn.Module):
         # - whether to use/update conv nets during encoding.
         self.use_convnets = vae_config.get('use_convnets', True)
         self.encoder.use_convnets = self.use_convnets
-        # - How many fully connected layers to pass thru.
-        self.fc_limit = vae_config.get('fc_limit', 10)
+        # - Added variance to the gaussian.
+        self.add_stdev = vae_config.get('add_stdev', 0.1)
 
     def param_count(self):
         return sum([prod(w.size()) for w in self.parameters()])
@@ -172,12 +175,13 @@ class VAE(nn.Module):
         logger.info('model:kl_multiplier=%f', self.kl_multiplier)
         logger.info('model:score_fn=%s', self.score_fn)
         logger.info('model:param_count=%d', self.param_count())
+        logger.info('model:add_stdev=%f', self.add_stdev)
 
     def encode(self, x):
-        return self.encoder(x, fc_limit=self.fc_limit)
+        return self.encoder(x)
 
     def decode(self, z):
-        return self.decoder(z, fc_limit=self.fc_limit)
+        return self.decoder(z)
 
     def score(self, mean, logvar, x):
         if self.score_fn == 'squared_error':
@@ -198,6 +202,7 @@ class VAE(nn.Module):
 
         # Decode. Given z, return distribution P(X|z). (n, k) -> (n, 768)
         x_mean, x_logvar = self.decode(z_samples)
+        x_logvar = logsumexp(self.add_stdev, x_logvar)
 
         score = self.score(x_mean, x_logvar, x) # Estimate for P(x)
         kl_div = kl_div_with_std_norm(z_mean, z_logvar)

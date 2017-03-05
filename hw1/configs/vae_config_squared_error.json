@@ -1,14 +1,14 @@
 {
   "verbose": true,
   "unlabeled_model": "vae",
-  "skip_unlabeled_training": true,
-  "skip_labeled_training": false,
+  "skip_unlabeled_training": false,
+  "skip_labeled_training": true,
   "augment_training_data": "vae",
 
   "training": {
-    "learning_rate": 0.1,
+    "learning_rate": 3e-4,
     "dropout": 0.4,
-    "num_unlabeled_epochs": 7,
+    "num_unlabeled_epochs": 10,
     "num_epochs": 100,
     "nonlinearity": "relu",
     "momentum": {
@@ -23,12 +23,16 @@
     "continue": false,
     "kl_multiplier": 1,
     "score_fn": "squared_error",
-    "image_file_name": "vae_squared.png",
-    "model_file_name": "vae_squared.torch.tar"
+    "image_file_name": "vae_squared_e10.png",
+    "model_file_name": "vae_squared_e10.torch.tar"
   },
 
   "vae_expander": {
     "p": 0.9,
-    "model_file_name": "vae_squared.torch.tar"
+    "mixed_mode_line_proportion": 0.5,
+    "mode": "hull",
+    "hull_dim": 4,
+    "extra": 0.3,
+    "model_file_name": "vae_squared_e10.torch.tar"
   }
 }
