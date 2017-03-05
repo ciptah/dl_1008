@@ -8,7 +8,6 @@ import logging
 
 logger = logging.getLogger('predictive_model')
 
-
 class PredictiveModel:
     """
     Class that represents a model
@@ -17,11 +16,6 @@ class PredictiveModel:
         learning_rate = config['training']['learning_rate']
         momentum = config['training']['momentum']['mu_coefficient']
         self.config = config
-        #self.model = Net()
-        #self.model = Net(psuedo_label_alpha_func=default_pseudo_label_func)
-        #self.model = SWWAE(psuedo_label_alpha_func=default_pseudo_label_func)
-        #self.model = SWWAE(psuedo_label_alpha_func=default_pseudo_label_func)
-        #self.optimizer = optim.SGD(self.model.parameters(), lr=0.01, momentum=0.05)
         model_name = config.get('model', 'basic')
         logger.info('Using model "%s".', model_name)
         self.model = constants.models[model_name](config)

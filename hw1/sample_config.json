@@ -2,15 +2,15 @@
   "verbose": true,
 
   "training": {
-    "learning_rate": 0.1,
+    "learning_rate": 0.001,
     "dropout": 0.4,
     "num_epochs": 3,
-    "PReLU": true,
+    "PReLU": false,
     "momentum": {
-      "mu_coefficient": 0.05,
+      "mu_coefficient": 0.5,
       "use_nesterov": false
     }
   },
 
-    "model": "swwae"
+    "model": "ladder"
 }

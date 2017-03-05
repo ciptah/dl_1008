@@ -172,8 +172,8 @@ if __name__ == "__main__":
     logger.info('train unlabelled provider loaded')
     validation_provider = data_provider.DataProvider(file_dir="validation_data.p", train=False)
     logger.info('validation provider loaded')
-    #pred_label = data_provider.DataProvider(file_dir="test.p", train=False)
-    #logger.info('test provider loaded')
+    pred_label = data_provider.DataProvider(file_dir="test.p", train=False)
+    logger.info('test provider loaded')
 
     # Num of epochs
     num_epochs = config.get('training', {}).get('num_epochs', 10)
