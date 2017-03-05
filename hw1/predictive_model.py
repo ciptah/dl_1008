@@ -70,5 +70,15 @@ class PredictiveModel:
         pred = output.data.max(1)[1]  # get the index of the max log-probability
         return output, pred
 
+def get_unlabeled_model(config):
+    model = config.get('unlabeled_model', None)
+    logger.info('Unlabeled model "%s".', model)
+    if not model:
+        return None
+    return constants.unlabeled_models[model](config)
 
-
+def augment_training_data(config, loader):
+    setting = config.get('augment_training_data', None)
+    if setting:
+        loader = constants.augment_training[setting](config, loader)
+    return loader
