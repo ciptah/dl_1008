@@ -46,21 +46,3 @@ class SGD_Mmtm(Optimizer):
                 d_p = p.grad.data
                 
         return loss
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
