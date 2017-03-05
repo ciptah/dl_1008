@@ -1,4 +1,5 @@
 from models.basic_net import basicNet
+from models.ladder_net import ladderNet
 from models import pseudo_label
 from models.SWWAE import swwae
 
@@ -6,7 +7,8 @@ from models.SWWAE import swwae
 # a subclass of nn.Module.
 models = {
     'basic': basicNet,
-    'swwae': swwae
+    'ladder': ladderNet,
+    'swwae': swwae,
 }
 
 psuedo_label_func_dict = {

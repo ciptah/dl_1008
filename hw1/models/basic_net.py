@@ -3,10 +3,9 @@ Module that contains the basic neural net model.
 """
 import torch.nn.functional as F
 import torch.nn as nn
-from torch.autograd import Variable
 import constants
-
 import logging
+from torch.autograd import Variable
 
 logger = logging.getLogger('basic_net')
 
