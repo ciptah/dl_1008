@@ -6,19 +6,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch
 import logging
+from torch.autograd import Variable
 
 logger = logging.getLogger('basic_net')
-
-class CMul(nn.Module):
-    """
-    This net implements element-wise add and multiplication 
-    """
-    def __init__(self, tensor_size):
-        super(CMul, self).__init__()
-        self.beta = nn.Parameter(torch.randn(1, tensor_size))
-        
-    def forward(self, x):
-        return (x + self.beta.expand(x.size()))
 
 class Net(nn.Module):
     """
@@ -32,7 +22,7 @@ class Net(nn.Module):
     Worth noting that the nn.Conv2d and nn.Linear modules provided by PyTorch
     use the scaled initialization standard deviation found in He et al.
     """
-    def __init__(self, dropout=0.5, prelu=False):
+    def __init__(self, dropout=0.5, prelu=False, psuedo_label_alpha_func=None):
         super(Net, self).__init__()
         self.dropout = dropout
 
@@ -46,7 +36,6 @@ class Net(nn.Module):
 
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
-        self.plus = CMul(10)
 
         self.prelu = prelu
         if prelu:
@@ -90,12 +79,18 @@ class Net(nn.Module):
         # FC: 50->10
         x = self.relu(self.fc2(x), self.fc2_prelu)
         #x = self.plus(x)
-        return F.log_softmax(x)
+        return F.log_softmax(x),0
 
     def loss_func(self, output, target):
-        return F.nll_loss(output, target)
+        if -1 in target.data:
+            max_class = output[0].data.max(1)[1]
+            max_class = max_class.view(-1)
+            target = Variable(max_class)
+        # loss_nll = F.nll_loss(x_out, target)
+        loss_nll = F.nll_loss(output[0], target) if -1 not in target.data else 0
+        return loss_nll
 
 def basicNet(config):
     dropout = config.get('training', {}).get('dropout', '0.5')
-    prelu = config.get('training', {}).get('PReLU', False)
+    prelu = config.get('training', {}).get('PReLU', True)
     return Net(dropout=dropout, prelu=prelu)

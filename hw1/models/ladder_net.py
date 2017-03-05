@@ -3,7 +3,6 @@ Module that contains the ladder neural net model.
 """
 import torch.nn.functional as F
 import torch.nn as nn
-import torch.optim as optim
 import torch
 
 import logging
@@ -30,16 +29,17 @@ class Decoder(nn.Module):
     """
     def __init__(self, tensor_size):
         super(Decoder, self).__init__()
-        self.a1 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a2 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a3 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a4 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a5 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a6 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a7 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a8 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a9 = nn.Parameter(torch.randn(1, tensor_size))
-        self.a10 = nn.Parameter(torch.randn(1, tensor_size))
+        init_weights = 1e-2
+        self.a1 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a2 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a3 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a4 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a5 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a6 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a7 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a8 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a9 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
+        self.a10 = nn.Parameter(torch.randn(1, tensor_size) * init_weights)
         self.sigmoid = nn.Sigmoid()
         
     def forward(self, z, u):
@@ -78,8 +78,7 @@ class LadderNet(basic_net.Net):
         #Top layer
         self.enc6 = nn.Linear(self.layers[4], self.layers[5])
         self.n6 = nn.BatchNorm1d(self.layers[5])
-        self.h6 = CMul(self.layers[5])
-        
+        self.h6 = CMul(self.layers[5])        
         self.dn6 = nn.BatchNorm1d(self.layers[5])
         self.dec6 = Decoder(self.layers[5])
         self.v6 = nn.Linear(self.layers[5], self.layers[4])
@@ -114,9 +113,10 @@ class LadderNet(basic_net.Net):
         sigma = float(noise)**2
         N = x.size()
         #return torch.normal(torch.zeros(N), torch.ones(N)*sigma) + x
-        b = nn.Parameter(torch.randn(*x.size()))
+        b = torch.randn(*x.size())
         #b = torch.normal(torch.zeros(N), torch.ones(N)*sigma)
-        return x + b * sigma
+        x = x + torch.autograd.Variable(b * sigma,volatile=False)
+        return x
 
     def relu(self, input, which_prelu):
         """Pick which rectifier unit to use, ReLU or PReLU."""
@@ -124,7 +124,7 @@ class LadderNet(basic_net.Net):
             return which_prelu(input)
         else:
             return F.relu(input)
-        
+
     def forward(self, x):
         #clean path
         x = x.view(-1, 784)
@@ -132,13 +132,13 @@ class LadderNet(basic_net.Net):
         h_clean_0 = z_clean_0
         z_pre_1 = self.enc1(h_clean_0)
         z_clean_1 = self.n1(z_pre_1)
-        h_clean_1 = self.relu(self.h1(z_clean_1), self.prelu) 
+        h_clean_1 = self.relu(self.h1(z_clean_1), self.prelu)
         z_pre_2 = self.enc2(h_clean_1)
         z_clean_2 = self.n2(z_pre_2)
-        h_clean_2 = self.relu(self.h2(z_clean_2), self.prelu) 
+        h_clean_2 = self.relu(self.h2(z_clean_2), self.prelu)
         z_pre_3 = self.enc3(h_clean_2)
         z_clean_3 = self.n3(z_pre_3)
-        h_clean_3 = self.relu(self.h3(z_clean_3), self.prelu) 
+        h_clean_3 = self.relu(self.h3(z_clean_3), self.prelu)
         z_pre_4 = self.enc4(h_clean_3)
         z_clean_4 = self.n4(z_pre_4)
         h_clean_4 = self.relu(self.h4(z_clean_4), self.prelu)
@@ -147,7 +147,7 @@ class LadderNet(basic_net.Net):
         h_clean_5 = self.relu(self.h5(z_clean_5), self.prelu)
         z_pre_6 = self.enc6(h_clean_5)
         z_clean_6 = self.n6(z_pre_6)
-        h_clean_6 = self.relu(self.h6(z_clean_6), self.prelu)  
+        h_clean_6 = self.relu(self.h6(z_clean_6), self.prelu)
         
         #corrupted path
         z_corrupt_0 = self.addNoise(x, self.noise)
@@ -168,26 +168,31 @@ class LadderNet(basic_net.Net):
         #decode
         u_6 = self.dn6(h_corrupt_6)
         z_hat_6 = self.dec6(z_corrupt_6, u_6)
-        z_decode_6 = (z_hat_6 - torch.mean(z_pre_6, 0).expand(z_pre_6.size())) / Variable(torch.std(z_pre_6.data, 0).expand(z_pre_6.size()), requires_grad=True)
+        z_decode_6 = (z_hat_6 - torch.mean(z_pre_6, 0).expand(z_pre_6.size())) / Variable(torch.std(z_pre_6.data, 0).expand(z_pre_6.size()), requires_grad=False)
+        #z_decode_6.data = z_decode_6.data / torch.std(z_pre_6.data, 0).expand(z_pre_6.size())
         u_5 = self.dn5(self.v6(z_hat_6))
         z_hat_5 = self.dec5(z_corrupt_5, u_5)
-        z_decode_5 = (z_hat_5 - torch.mean(z_pre_5, 0).expand(z_pre_5.size())) / Variable(torch.std(z_pre_5.data, 0).expand(z_pre_5.size()), requires_grad=True)
+        z_decode_5 = (z_hat_5 - torch.mean(z_pre_5, 0).expand(z_pre_5.size())) / Variable(torch.std(z_pre_5.data, 0).expand(z_pre_5.size()), requires_grad=False)
+        #z_decode_5.data = z_decode_5.data / torch.std(z_pre_5.data, 0).expand(z_pre_5.size())
         u_4 = self.dn4(self.v5(z_hat_5))
         z_hat_4 = self.dec4(z_corrupt_4, u_4)
-        z_decode_4 = (z_hat_4 - torch.mean(z_pre_4, 0).expand(z_pre_4.size())) / Variable(torch.std(z_pre_4.data, 0).expand(z_pre_4.size()), requires_grad=True)
+        z_decode_4 = (z_hat_4 - torch.mean(z_pre_4, 0).expand(z_pre_4.size())) / Variable(torch.std(z_pre_4.data, 0).expand(z_pre_4.size()), requires_grad=False)
+        #z_decode_4.data = z_decode_4.data / torch.std(z_pre_4.data, 0).expand(z_pre_4.size())
         u_3 = self.dn3(self.v4(z_hat_4))
         z_hat_3 = self.dec3(z_corrupt_3, u_3)
-        z_decode_3 = (z_hat_3 - torch.mean(z_pre_3, 0).expand(z_pre_3.size())) / Variable(torch.std(z_pre_3.data, 0).expand(z_pre_3.size()), requires_grad=True)
+        z_decode_3 = (z_hat_3 - torch.mean(z_pre_3, 0).expand(z_pre_3.size())) / Variable(torch.std(z_pre_3.data, 0).expand(z_pre_3.size()), requires_grad=False)
+        #z_decode_3.data = z_decode_3.data / torch.std(z_pre_3.data, 0).expand(z_pre_3.size())
         u_2 = self.dn2(self.v3(z_hat_3))
         z_hat_2 = self.dec2(z_corrupt_2, u_2)
-        z_decode_2 = (z_hat_2 - torch.mean(z_pre_2, 0).expand(z_pre_2.size())) / Variable(torch.std(z_pre_2.data, 0).expand(z_pre_2.size()), requires_grad=True)
+        z_decode_2 = (z_hat_2 - torch.mean(z_pre_2, 0).expand(z_pre_2.size())) / Variable(torch.std(z_pre_2.data, 0).expand(z_pre_2.size()), requires_grad=False)
+        #z_decode_2.data = z_decode_2.data / torch.std(z_pre_2.data, 0).expand(z_pre_2.size())
         u_1 = self.dn1(self.v2(z_hat_2))
         z_hat_1 = self.dec1(z_corrupt_1, u_1)
-        z_decode_1 = (z_hat_1 - torch.mean(z_pre_1, 0).expand(z_pre_1.size())) / Variable(torch.std(z_pre_1.data, 0).expand(z_pre_1.size()), requires_grad=True)
+        z_decode_1 = (z_hat_1 - torch.mean(z_pre_1, 0).expand(z_pre_1.size())) / Variable(torch.std(z_pre_1.data, 0).expand(z_pre_1.size()), requires_grad=False)
+        #z_decode_1.data = z_decode_1.data / torch.std(z_pre_1.data, 0).expand(z_pre_1.size())
         u_0 = self.dn0(self.v1(z_hat_1))
         z_hat_0 = self.dec0(z_corrupt_0, u_0)
-        z_decode_0 = z_hat_0
-        
+        z_decode_0 = z_hat_0        
     
         #calculate distance between z_decode_i and z_clean_i
         d0 = ((z_decode_0 - z_clean_0)**2).mean()
@@ -197,11 +202,13 @@ class LadderNet(basic_net.Net):
         d4 = ((z_decode_4 - z_clean_4)**2).mean()
         d5 = ((z_decode_5 - z_clean_5)**2).mean()
         d6 = ((z_decode_6 - z_clean_6)**2).mean()
-        y = F.log_softmax(h_corrupt_6)
-        return y, 1000*d0+1*d1+0.01*(d2+d3+d4+d5+d6)
+        y_corrupt = F.log_softmax(h_corrupt_6)
+        y_clean = F.log_softmax(h_clean_6)
+        return y_clean, 1000*d0+1*d1+0.01*(d2+d3+d4+d5+d6), y_corrupt
+        #return y, (d1+d2+d3+d4+d5+d6+d0)*10**-10
     
     def loss_func(self, output, target):
-        y_hat, recon_error = output
+        y_clean, recon_error, y_hat = output
         # unsupervised samples should have -1 label
         # pseudo-label
         # if -1 in target.data:
@@ -209,7 +216,7 @@ class LadderNet(basic_net.Net):
         #     max_class = max_class.view(-1)
         #     target = Variable(max_class)
         # loss_nll = F.nll_loss(x_out, target)
-        loss_nll = F.nll_loss(y_hat, target) if -1 not in target.data else 0
+        loss_nll = F.nll_loss(y_hat, target) #if -1 not in target.data else 0
         # Reconstruction Error
         return loss_nll + recon_error
 

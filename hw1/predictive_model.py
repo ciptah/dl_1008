@@ -9,6 +9,20 @@ import logging
 
 logger = logging.getLogger('predictive_model')
 
+def default_pseudo_label_func(unlabel, t):
+    T1 = 100
+    T2 = 300
+    alpha_f = 3.0
+    if not unlabel:
+        return 1
+    else:
+        if t < T1:
+            return 0
+        elif t < T2:
+            return float(t-T1)/(T2-T1)*alpha_f
+        else:
+            return alpha_f
+
 class PredictiveModel:
     """
     Class that represents a model
