@@ -219,4 +219,4 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         for config_filename in sys.argv[1:]:
-            main()
+            main(config_filename)
