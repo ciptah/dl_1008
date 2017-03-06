@@ -6,11 +6,13 @@ from models.ladder_net import ladderNet
 from models import pseudo_label
 from models.SWWAE import swwae
 from models.vae import vae
+from models.improved_net import improvedNet
 
 # The values of this dict are functions that take the config object and returns
 # a subclass of nn.Module.
 models = {
     'basic': basicNet,
+    'improved': improvedNet,
     'ladder': ladderNet,
     'swwae': swwae,
 }
