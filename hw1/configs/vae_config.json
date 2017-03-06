@@ -1,0 +1,22 @@
+{
+  "verbose": true,
+  "unlabeled_model": "vae",
+  "skip_labeled_training": true,
+
+  "training": {
+    "learning_rate": 2e-4,
+    "num_unlabeled_epochs": 7,
+    "nonlinearity": "relu"
+  },
+
+  "vae": {
+    "num_latent_vars": 16,
+    "image_per": 1,
+    "continue": false,
+    "kl_multiplier": 1,
+    "score_fn": "bce",
+    "image_file_name": "vae_bce_e7.png",
+    "model_file_name": "vae_bce_e7.torch.tar"
+  }
+}
+
