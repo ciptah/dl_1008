@@ -5,6 +5,7 @@ import torch
 import random
 import logging
 import sys
+import pickle
 import numpy as np
 import data_provider as dp
 
@@ -226,7 +227,7 @@ def augment(config, loader, model_override=None):
         vaes = [augment(config, loader, mf) for mf in mfilename]
         return Mixer(vaes)
     else:
-        vae = torch.load(mfilename)
+        vae = pickle.load(open(mfilename, 'rb'))
         vaes = VAEExpander(config, vae, loader)
         return vaes
 

@@ -6,7 +6,7 @@
 
   "training": {
     "learning_rate": 3e-4,
-    "num_unlabeled_epochs": 10,
+    "num_unlabeled_epochs": 1,
     "nonlinearity": "relu"
   },
 
@@ -17,6 +17,6 @@
     "kl_multiplier": 1,
     "score_fn": "squared_error",
     "image_file_name": "vae_squared_e10.png",
-    "model_file_name": "vae_squared_e10.torch.tar"
-  },
+    "model_file_name": "vae_squared_e10.torch.p"
+  }
 }

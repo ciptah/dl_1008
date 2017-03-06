@@ -5,7 +5,7 @@
 
   "training": {
     "learning_rate": 2e-4,
-    "num_unlabeled_epochs": 7,
+    "num_unlabeled_epochs": 1,
     "nonlinearity": "relu"
   },
 
@@ -16,7 +16,6 @@
     "kl_multiplier": 1,
     "score_fn": "bce",
     "image_file_name": "vae_bce_e7.png",
-    "model_file_name": "vae_bce_e7.torch.tar"
+    "model_file_name": "vae_bce_e7.torch.p"
   }
 }
-
