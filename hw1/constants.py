@@ -1,6 +1,6 @@
 import augment
 import models.vae_supervised as vae_supervised
-
+from models.improved_net import improvedNet
 from models.basic_net import basicNet
 from models.ladder_net import ladderNet
 from models import pseudo_label
@@ -37,6 +37,7 @@ augment_training = {
     'vae': vae_supervised.augment,
     'default': augment.create_augmenter,
     'chain': chain_augmenter,
-    'none': no_augment
+    'none': no_augment,
+    'improve': improvedNet,
 }
 
