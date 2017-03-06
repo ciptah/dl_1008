@@ -146,7 +146,7 @@ def main(config_filename):
 
     if config.get('skip_labeled_training', False):
         logger.info('skipping labeled training.')
-        sys.exit(0)
+        return
 
     # Num of epochs
     num_epochs = config.get('training', {}).get('num_epochs', 10)
