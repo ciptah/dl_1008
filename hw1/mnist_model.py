@@ -125,13 +125,7 @@ def predict_model(model, pred_data_loader):
     return df
 
 
-def main():
-    # arg parse
-    if len(sys.argv) < 2:
-        print('Need a config filename!')
-        sys.exit(1)
-    config_filename = sys.argv[1]
-
+def main(config_filename):
     # parse config
     config = build_config(config_filename, logger)
 
@@ -216,4 +210,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) < 2:
+        print('Running a full configuration.')
+        # Full pipeline - for submission.
+        main('configs/vae_config.json')
+        main('configs/vae_config_squared_error.json')
+        main('configs/vae_mixer.json')
+        sys.exit(0)
+    else:
+        for config_filename in sys.argv[1:]:
+            main()

@@ -35,7 +35,7 @@ def squared_error(mean, v):
     return -(mean - v).pow(2).view(-1, MNIST_SIZE).sum(1)
 
 def cross_entropy(mean, v):
-    mean = F.sigmoid(mean)
+    mean = F.sigmoid(mean) + 1e-10
     v = (v - MIN) / (MAX - MIN)
     return (v * mean.log() + (1 - v) * (1 - mean).log()).view(-1, MNIST_SIZE).sum(1)
 
