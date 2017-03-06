@@ -6,13 +6,13 @@
 
   "training": {
     "learning_rate": 3e-4,
-    "num_unlabeled_epochs": 1,
+    "num_unlabeled_epochs": 10,
     "nonlinearity": "relu"
   },
 
   "vae": {
     "num_latent_vars": 16,
-    "image_per": 2,
+    "image_per": 1,
     "continue": false,
     "kl_multiplier": 1,
     "score_fn": "squared_error",
