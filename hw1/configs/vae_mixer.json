@@ -1,0 +1,32 @@
+{
+  "verbose": true,
+  "skip_unlabeled_training": true,
+  "skip_labeled_training": false,
+  "augment_training_data": "chain",
+
+  "training": {
+    "learning_rate": 0.1,
+    "dropout": 0.4,
+    "num_epochs": 3,
+    "nonlinearity": "relu",
+    "epochs_before_unlabeled": 1,
+    "momentum": {
+      "mu_coefficient": 0.05,
+      "use_nesterov": false
+    }
+  },
+
+  "vae_expander": {
+    "p": 0.9,
+    "mixed_mode_line_proportion": 0.5,
+    "mode": "mixed",
+    "hull_dim": 4,
+    "extra": 0.2,
+    "epoch_multiple": 3,
+    "model_file_name": [
+      "vae_squared_e10.torch.tar",
+      "vae_bce_e7.torch.tar"
+    ]
+  }
+}
+

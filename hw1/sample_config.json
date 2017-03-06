@@ -1,16 +1,18 @@
 {
   "verbose": true,
+  "skip_unlabeled_training": true,
 
   "training": {
     "learning_rate": 0.001,
     "dropout": 0.4,
     "num_epochs": 3,
     "PReLU": false,
+    "report_every_n_batch": 10,
     "momentum": {
       "mu_coefficient": 0.5,
       "use_nesterov": false
     }
   },
 
-    "model": "ladder"
+  "model": "ladder"
 }
