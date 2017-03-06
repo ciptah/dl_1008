@@ -46,6 +46,8 @@ class Net(nn.Module):
                 max_class = output[0].data.max(1)[1]
                 max_class = max_class.view(-1)
                 target = Variable(max_class)
+            else:
+                raise ValueError('pseudo_label_alpha_func must not be None')
             loss_nll = F.nll_loss(output[0], target)
         else:
             loss_nll = F.nll_loss(output[0], target)
@@ -55,6 +57,6 @@ class Net(nn.Module):
 
 
 def basicNet(config):
-    pseudo_func_key = config.get('pseudo_label_func', None)
+    pseudo_func_key = config.get('pseudo_label_func', 'default')
     pseudo_func = None if pseudo_func_key is None else constants.psuedo_label_func_dict[pseudo_func_key]
     return Net(psuedo_label_alpha_func=pseudo_func)
