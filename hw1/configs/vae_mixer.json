@@ -25,7 +25,7 @@
     "epoch_multiple": 3,
     "model_file_name": [
       "vae_squared_e10.torch.p",
-      "vae_bce_e7.torch.p"
+      "vae_bce_e10.torch.p"
     ]
   }
 }
