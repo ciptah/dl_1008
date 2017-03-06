@@ -5,6 +5,10 @@ Module that contains all code for the MNIST predictive model
 import torch.optim as optim
 import constants
 import logging
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
+
 
 logger = logging.getLogger('predictive_model')
 
