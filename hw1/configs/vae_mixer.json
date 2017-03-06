@@ -1,6 +1,6 @@
 {
   "verbose": true,
-  "model": "basic",
+  "model": "improved",
   "skip_unlabeled_training": true,
   "skip_labeled_training": false,
   "augment_training_data": "chain",
@@ -8,7 +8,7 @@
   "training": {
     "learning_rate": 0.1,
     "dropout": 0.4,
-    "num_epochs": 200,
+    "num_epochs": 3000,
     "nonlinearity": "relu",
     "epochs_before_unlabeled": 1,
     "momentum": {
