@@ -19,27 +19,18 @@ class ImprovedNet(nn.Module):
         self.dropout = 0.4
 
         # The head of the network changes at epoch 30.
-        self.conv1a = nn.Conv2d(1, 60, padding=2, kernel_size=5) # 28 -> 28
-        self.conv1b = nn.Conv2d(60, 60, kernel_size=5) # 28 -> 24 -> 12
-
         self.conv1 = nn.Conv2d(1, 60, kernel_size=5) # 28 -> 24 -> 12
 
         self.conv2 = nn.Conv2d(60, 90, kernel_size=3)  # 12 -> 10
         self.conv3 = nn.Conv2d(90, 100, kernel_size=3) # 10 -> 8 -> 4
-        self.fc1 = nn.Linear(1600, 800)
-        self.fc1a = nn.Linear(800, 800)
-        self.fc2 = nn.Linear(800, 10)
+        self.fc1 = nn.Linear(1600, 1000)
+        self.fc1a = nn.Linear(1000, 1000)
+        self.fc2 = nn.Linear(1000, 10)
         self.psuedo_label_alpha_func = psuedo_label_alpha_func
         self.current_epoch_num = 1
 
     def forward(self, x):
-        if self.current_epoch_num == 30:
-            logger.warn('E30: activating third convolution.')
-        if self.current_epoch_num > 30:
-            x = self.conv1a(x)
-            x = self.conv1b(x)
-        else:
-            x = self.conv1(x)
+        x = self.conv1(x)
         x = F.max_pool2d(x, 2)
         x = F.relu(x)
         # after relu: 64*10*12*12
