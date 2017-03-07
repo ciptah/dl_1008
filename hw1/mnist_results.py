@@ -22,7 +22,6 @@ if __name__ == "__main__":
         print('Usage: python mnist_results.py [model_file] [output_df] [test_data_pickle_file]')
         sys.exit(0)
     else:
-        print(sys.argv)
         model_file = sys.argv[1]
         output_file = sys.argv[2]
         test_data_file = sys.argv[3]
