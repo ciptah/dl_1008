@@ -1,0 +1,9 @@
+Q: How to train a model?
+A: You need to first edit the json format config file. For test purpose, you can use sample_config.json.
+   Secondly, create direction {current_workspace}/data/model/.
+   You can launch a trianing by using command "python mnist_model.py [config_file_name]". Model will be saved to ./data/model/.
+   
+Q: Given that I have a pickled model file and a prediction data file, how can I generate the csv for Kaggle?
+A: python mnist_results.py [model_filename] [output_filename_for_csv] [test_data_filename].
+   For example: python mnist_results.py best.p submission.csv test.p
+   
