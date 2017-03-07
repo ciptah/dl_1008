@@ -8,7 +8,7 @@
   "training": {
     "learning_rate": 0.1,
     "dropout": 0.4,
-    "num_epochs": 3000,
+    "num_epochs": 3,
     "nonlinearity": "relu",
     "epochs_before_unlabeled": 1,
     "momentum": {
