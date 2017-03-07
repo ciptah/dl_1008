@@ -18,12 +18,12 @@
   },
 
   "vae_expander": {
-    "p": 0.6,
+    "p": 0.3,
     "mode": "hull",
     "hull_dim": 4,
     "extra": 0.2,
     "epoch_multiple": 1,
-    "activate_at": 3,
+    "activate_at": 1,
     "model_file_name": [
       "vae_squared_e8.torch.p",
       "vae_bce_e8.torch.p"
