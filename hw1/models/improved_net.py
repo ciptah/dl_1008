@@ -41,7 +41,7 @@ class ImprovedNet(nn.Module):
         x = F.relu(x)
         x = self.conv1c(x)
         x = F.relu(x)
-        x = self.conv1_drop(self.conv1a(x))
+        x = self.conv1_drop(x)
         # after relu: 64*10*12*12
 
         #x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
@@ -51,7 +51,7 @@ class ImprovedNet(nn.Module):
         x = F.relu(F.max_pool2d(self.conv3_drop(self.conv3(x)), 2))
         # after third conv pool 64 * 20 * 4 * 4
 
-        x = x.view(-1, 1440)
+        x = x.view(-1, 1600)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training, p=self.dropout)
         x = self.fc2(x)
