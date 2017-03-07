@@ -8,9 +8,9 @@
   "training": {
     "learning_rate": 0.1,
     "dropout": 0.4,
-    "num_epochs": 3,
+    "num_epochs": 100,
     "nonlinearity": "relu",
-    "epochs_before_unlabeled": 1,
+    "epochs_before_unlabeled": 10,
     "momentum": {
       "mu_coefficient": 0.05,
       "use_nesterov": false
