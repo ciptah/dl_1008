@@ -20,8 +20,10 @@ class PredictiveModel:
         logger.info('Using model "%s".', model_name)
         self.model = constants.models[model_name](config)
         # TODO: optimization method should probably be configurable too.
-        self.optimizer = optim.SGD(self.model.parameters(),
-                lr=learning_rate, momentum=momentum)
+        # self.optimizer = optim.SGD(self.model.parameters(),
+        #         lr=learning_rate, momentum=momentum)
+        self.optimizer = optim.Adam(self.model.parameters(),
+                lr=learning_rate)
 
     def start_train(self):
         self.model.train()

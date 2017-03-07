@@ -16,7 +16,7 @@ class ImprovedNet(nn.Module):
     """
     def __init__(self, psuedo_label_alpha_func=None):
         super(ImprovedNet, self).__init__()
-        self.dropout = 0.35
+        self.dropout = 0.4
         self.conv1 = nn.Conv2d(1, 60, kernel_size=5) # 28 -> 24
         self.conv1a = nn.Conv2d(60, 60, kernel_size=5) # 24 -> 20
         self.conv1b = nn.Conv2d(60, 60, kernel_size=5) # 20 -> 16
@@ -25,6 +25,7 @@ class ImprovedNet(nn.Module):
         self.conv2 = nn.Conv2d(60, 90, kernel_size=3)  # 12 -> 10
         self.conv3 = nn.Conv2d(90, 100, kernel_size=3) # 10 -> 8 -> 4
         self.fc1 = nn.Linear(1600, 800)
+        self.fc1a = nn.Linear(800, 800)
         self.fc2 = nn.Linear(800, 10)
         self.psuedo_label_alpha_func = psuedo_label_alpha_func
         self.current_epoch_num = 1
@@ -32,12 +33,15 @@ class ImprovedNet(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = F.relu(x)
-        x = self.conv1a(x)
-        x = F.relu(x)
-        x = self.conv1b(x)
-        x = F.relu(x)
-        x = self.conv1c(x)
-        x = F.relu(x)
+        if self.current_epoch_num > 3:
+            x = self.conv1a(x)
+            x = F.relu(x)
+        if self.current_epoch_num > 6:
+            x = self.conv1b(x)
+            x = F.relu(x)
+        if self.current_epoch_num > 9:
+            x = self.conv1c(x)
+            x = F.relu(x)
         # after relu: 64*10*12*12
 
         #x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
@@ -50,6 +54,8 @@ class ImprovedNet(nn.Module):
         x = x.view(-1, 1600)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training, p=self.dropout)
+        if self.current_epoch_num > 6:
+            x = F.relu(self.fc1a(x))
         x = self.fc2(x)
         return [F.log_softmax(x)]
 

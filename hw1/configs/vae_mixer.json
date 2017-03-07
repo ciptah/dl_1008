@@ -1,6 +1,6 @@
 {
   "verbose": true,
-  "model": "improved",
+  "model": "basic",
   "skip_unlabeled_training": true,
   "skip_labeled_training": false,
   "augment_training_data": "chain",
@@ -8,9 +8,9 @@
   "training": {
     "learning_rate": 0.1,
     "dropout": 0.4,
-    "num_epochs": 100,
+    "num_epochs": 30,
     "nonlinearity": "relu",
-    "epochs_before_unlabeled": 10,
+    "epochs_before_unlabeled": 170,
     "momentum": {
       "mu_coefficient": 0.05,
       "use_nesterov": false
@@ -18,7 +18,7 @@
   },
 
   "vae_expander": {
-    "p": 0.9,
+    "p": 0.7,
     "mixed_mode_line_proportion": 0.5,
     "mode": "mixed",
     "hull_dim": 4,
