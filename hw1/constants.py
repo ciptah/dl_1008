@@ -13,6 +13,7 @@ models = {
     'basic': basicNet,
     'ladder': ladderNet,
     'swwae': swwae,
+    'improve': improvedNet,
 }
 
 psuedo_label_func_dict = {
@@ -38,6 +39,5 @@ augment_training = {
     'default': augment.create_augmenter,
     'chain': chain_augmenter,
     'none': no_augment,
-    'improve': improvedNet,
 }
 
