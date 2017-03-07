@@ -5,6 +5,7 @@ import torch
 import random
 import logging
 import sys
+import pickle
 import numpy as np
 import data_provider as dp
 
@@ -96,11 +97,14 @@ class VAEExpander(dp.Loader):
         self.epoch_multiple = xp_config.get('epoch_multiple', 10)
         # - dimension to reduce to before computing convex hull.
         self.hull_dim = xp_config.get('hull_dim', 6)
+        # - at what (approximate) epoch to activate.
+        self.activate_at = xp_config.get('activate_at', 50)
         # - when in mixed mode, what percentage of randomized examples
         #   are from the line generator.
         self.mixed_mode_line_proportion = xp_config.get('mixed_mode_line_proportion', 0.5)
 
         self.vae_model = vae_model
+        self.epoch_counter = 0
 
         self.build(train_loader)
 
@@ -125,7 +129,7 @@ class VAEExpander(dp.Loader):
                     for points in self.by_digit]
             self.hull_samplers = [s.sampler() for s in self.hulls]
 
-        logger.info('ready!')
+        logger.info('ready! Will activate at epoch %d', self.activate_at)
 
     def print_info(self):
         if self.mode == 'hull' or self.mode == 'mixed':
@@ -140,7 +144,7 @@ class VAEExpander(dp.Loader):
         return point * p1[1] + (1 - point) * p2[1]
 
     def get_random_from_hull(self, d):
-        return self.hull_samplers[d].__next__()
+        return next(self.hull_samplers[d])
 
     def get_random_mixed(self, d):
         if random.random() < self.mixed_mode_line_proportion:
@@ -181,9 +185,18 @@ class VAEExpander(dp.Loader):
     def __iter__(self):
         # Impersonate a Data Loader.
         # This is slow, but can act as a plug-in replacement for the data provider.
+        self.epoch_counter += 1
+        active = False
+        if self.epoch_counter == self.activate_at:
+            logger.warn('activating VAE generator')
+        if self.epoch_counter >= self.activate_at:
+            active = True
         for multiple in range(self.epoch_multiple):
             for data, target in self.train_loader:
-                yield self.mix_samples(data, target)
+                if active:
+                    yield self.mix_samples(data, target)
+                else:
+                    yield data, target
 
 class Mixer(dp.Loader):
     """Pools multiple VAEExpanders together and calls them in alternate."""
@@ -199,7 +212,7 @@ class Mixer(dp.Loader):
             random.shuffle(iters)
             for i in iters:
                 try:
-                    yield i.__next__()
+                    yield next(i)
                     has_next = True
                 except StopIteration:
                     pass
@@ -226,7 +239,7 @@ def augment(config, loader, model_override=None):
         vaes = [augment(config, loader, mf) for mf in mfilename]
         return Mixer(vaes)
     else:
-        vae = torch.load(mfilename)
+        vae = pickle.load(open(mfilename, 'rb'))
         vaes = VAEExpander(config, vae, loader)
         return vaes
 

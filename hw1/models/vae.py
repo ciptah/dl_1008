@@ -9,6 +9,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import torchvision
+import pickle
 from numpy import prod
 from torch.autograd import Variable
 
@@ -247,7 +248,7 @@ class VAETrainer:
             logger.info('continuing from previous model.')
             model_file_name = config.get('vae').get('model_file_name', 'vae.torch')
             logger.info('loading model from %s', model_file_name)
-            self.model = torch.load(model_file_name)
+            self.model = pickle.load(open(model_file_name, 'rb'))
             self.model.update(config, vae_config)
         else:
             self.model = VAE(config)
@@ -297,7 +298,7 @@ class VAETrainer:
         res = torch.cat(tensors)
         logger.debug('Image grid size: %s', res.size())
         torchvision.utils.save_image(res, self.image_file_name, nrow=images_per_epoch)
-        torch.save(self.model, self.model_file_name)
+        pickle.dump(self.model, open(self.model_file_name, 'wb'))
         logger.debug('Saved model to %s', self.model_file_name)
 
         logger.info('this model has gone through %d minibatches', self.model.counter)

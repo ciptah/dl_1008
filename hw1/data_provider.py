@@ -9,12 +9,13 @@ import numpy as np
 
 logger = logging.getLogger('data_provider')
 
-class Loader:
+class Loader(object):
     """Base data loader wrapper class.
     
     We do a lot of input duplication and manipulation so this class is used
     to make the counts correct."""
     def __init__(self, torch_loader):
+        super(Loader, self).__init__()
         self.torch_loader = torch_loader
 
     def __iter__(self):

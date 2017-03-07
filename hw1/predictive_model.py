@@ -22,6 +22,8 @@ class PredictiveModel:
         # TODO: optimization method should probably be configurable too.
         self.optimizer = optim.SGD(self.model.parameters(),
                 lr=learning_rate, momentum=momentum)
+        # self.optimizer = optim.Adam(self.model.parameters(),
+        #         lr=learning_rate)
 
     def start_train(self):
         self.model.train()

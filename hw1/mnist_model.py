@@ -5,6 +5,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import torchvision
 import pandas as pd
 import pickle
 import predictive_model
@@ -45,6 +46,8 @@ def unlabeled_training(
         unlabeled_model.epoch_done(epoch - 1)
     unlabeled_model.training_done()
 
+NORM_STD = 0.3081
+NORM_MEAN = 0.1307
 
 def train_epoch(model,
                 train_loader,
@@ -63,8 +66,13 @@ def train_epoch(model,
     correct_num = 0
     batch_loss = []
     batch_acc = []
+    saved = False
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = Variable(data), Variable(target.long())
+        if current_epoch == 1 and not saved:
+            z = (data * NORM_STD + NORM_MEAN).clamp(0, 1)
+            torchvision.utils.save_image(z.data, 'sample_batch.png', nrow=8)
+            saved = True
         if unlabeled:
             target.data.fill_(-1)
         pred_dist, loss = model.train_batch(data, target)
@@ -123,8 +131,8 @@ def main(config_filename):
     # comment out loader if you don't need. they take a hell lot of time!
     train_provider = data_provider.DataProvider(file_dir="train_labeled.p", train=True)
     logger.info('train provider loaded')
-    train_unlabeled = data_provider.DataProvider(file_dir="train_unlabeled.p", train=True)
-    logger.info('train unlabeled provider loaded')
+    # train_unlabeled = data_provider.DataProvider(file_dir="train_unlabeled.p", train=True)
+    # logger.info('train unlabeled provider loaded')
     validation_provider = data_provider.DataProvider(file_dir="validation_data.p", train=False)
     logger.info('validation provider loaded')
 
@@ -134,7 +142,7 @@ def main(config_filename):
 
     if config.get('skip_labeled_training', False):
         logger.info('skipping labeled training.')
-        sys.exit(0)
+        return
 
     # Num of epochs
     num_epochs = config.get('training', {}).get('num_epochs', 10)

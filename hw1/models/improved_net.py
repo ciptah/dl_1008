@@ -7,35 +7,48 @@ import constants
 import logging
 from torch.autograd import Variable
 
-logger = logging.getLogger('basic_net')
+logger = logging.getLogger('improved_net')
 
 
-class Net(nn.Module):
+class ImprovedNet(nn.Module):
     """
     Sample Model
     """
     def __init__(self, psuedo_label_alpha_func=None):
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+        super(ImprovedNet, self).__init__()
+        self.dropout = 0.4
+
+        # The head of the network changes at epoch 30.
+        self.conv1 = nn.Conv2d(1, 60, kernel_size=5) # 28 -> 24 -> 12
+
+        self.conv2 = nn.Conv2d(60, 90, kernel_size=3)  # 12 -> 10
+        self.conv3 = nn.Conv2d(90, 100, kernel_size=3) # 10 -> 8 -> 4
+        self.fc1 = nn.Linear(1600, 1000)
+        self.fc1a = nn.Linear(1000, 1000)
+        self.fc2 = nn.Linear(1000, 10)
         self.psuedo_label_alpha_func = psuedo_label_alpha_func
         self.current_epoch_num = 1
 
     def forward(self, x):
-        # x: 64 * 1 * 28 * 28
         x = self.conv1(x)
-        # after conv: 64*10*24*24
         x = F.max_pool2d(x, 2)
-        # after pool 64 * 10 * 12 * 12
         x = F.relu(x)
         # after relu: 64*10*12*12
-        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = x.view(-1, 320)
+
+        #x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = F.relu(self.conv2(x))
+        # after second conv pool 64 * 20 * 10 * 10
+
+        x = F.relu(F.max_pool2d(self.conv3(x), 2))
+        # after third conv pool 64 * 20 * 4 * 4
+
+        x = x.view(-1, 1600)
         x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
+        x = F.dropout(x, training=self.training, p=self.dropout)
+        if self.current_epoch_num == 10:
+            logger.warn('E10: activating second FC layer.')
+        if self.current_epoch_num > 10:
+            x = F.relu(self.fc1a(x))
         x = self.fc2(x)
         return [F.log_softmax(x)]
 
@@ -56,7 +69,7 @@ class Net(nn.Module):
         return loss_nll
 
 
-def basicNet(config):
+def improvedNet(config):
     pseudo_func_key = config.get('pseudo_label_func', 'default')
     pseudo_func = None if pseudo_func_key is None else constants.psuedo_label_func_dict[pseudo_func_key]
-    return Net(psuedo_label_alpha_func=pseudo_func)
+    return ImprovedNet(psuedo_label_alpha_func=pseudo_func)
