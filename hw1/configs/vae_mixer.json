@@ -3,7 +3,7 @@
   "model": "improved",
   "skip_unlabeled_training": true,
   "skip_labeled_training": false,
-  "augment_training_data": "default",
+  "augment_training_data": "chain",
 
   "training": {
     "learning_rate": 0.1,

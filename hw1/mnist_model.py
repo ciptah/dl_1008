@@ -131,8 +131,8 @@ def main(config_filename):
     # comment out loader if you don't need. they take a hell lot of time!
     train_provider = data_provider.DataProvider(file_dir="train_labeled.p", train=True)
     logger.info('train provider loaded')
-    train_unlabeled = data_provider.DataProvider(file_dir="train_unlabeled.p", train=True)
-    logger.info('train unlabeled provider loaded')
+    # train_unlabeled = data_provider.DataProvider(file_dir="train_unlabeled.p", train=True)
+    # logger.info('train unlabeled provider loaded')
     validation_provider = data_provider.DataProvider(file_dir="validation_data.p", train=False)
     logger.info('validation provider loaded')
 

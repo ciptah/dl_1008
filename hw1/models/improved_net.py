@@ -19,7 +19,7 @@ class ImprovedNet(nn.Module):
         self.dropout = 0.4
 
         # The head of the network changes at epoch 30.
-        self.conv1a = nn.Conv2d(1, 60, padding=2 kernel_size=5) # 28 -> 28
+        self.conv1a = nn.Conv2d(1, 60, padding=2, kernel_size=5) # 28 -> 28
         self.conv1b = nn.Conv2d(60, 60, kernel_size=5) # 28 -> 24 -> 12
 
         self.conv1 = nn.Conv2d(1, 60, kernel_size=5) # 28 -> 24 -> 12

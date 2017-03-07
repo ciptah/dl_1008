@@ -191,12 +191,8 @@ class VAEExpander(dp.Loader):
             logger.warn('activating VAE generator')
         if self.epoch_counter >= self.activate_at:
             active = True
-        limit = 5
         for multiple in range(self.epoch_multiple):
             for data, target in self.train_loader:
-                limit = limit - 1
-                if limit == 0:
-                    return
                 if active:
                     yield self.mix_samples(data, target)
                 else:
