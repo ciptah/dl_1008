@@ -18,13 +18,10 @@ class ImprovedNet(nn.Module):
         super(ImprovedNet, self).__init__()
         self.dropout = 0.3
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.prelu1 = nn.PReLU()
         self.conv2 = nn.Conv2d(10, 20, kernel_size=3)
         self.conv2_drop = nn.Dropout2d(p=self.dropout)
-        self.prelu2 = nn.PReLU()
         self.conv3 = nn.Conv2d(20, 20, kernel_size=3)
         self.conv3_drop = nn.Dropout2d(p=self.dropout)
-        self.prelu3 = nn.PReLU()
         self.fc1 = nn.Linear(320, 100)
         self.fc2 = nn.Linear(100, 10)
         self.psuedo_label_alpha_func = psuedo_label_alpha_func
@@ -33,14 +30,14 @@ class ImprovedNet(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = F.max_pool2d(x, 2)
-        x = self.prelu1(x)
+        x = F.relu(x)
         # after relu: 64*10*12*12
 
         #x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = self.prelu2(self.conv2(x))
+        x = F.relu(self.conv2(x))
         # after second conv pool 64 * 20 * 10 * 10
 
-        x = self.prelu3(F.max_pool2d(self.conv3_drop(self.conv3(x)), 2))
+        x = F.relu(F.max_pool2d(self.conv3_drop(self.conv3(x)), 2))
         # after third conv pool 64 * 20 * 4 * 4
 
         x = x.view(-1, 320)
