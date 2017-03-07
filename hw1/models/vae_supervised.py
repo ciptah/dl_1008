@@ -129,7 +129,7 @@ class VAEExpander(dp.Loader):
                     for points in self.by_digit]
             self.hull_samplers = [s.sampler() for s in self.hulls]
 
-        logger.info('ready!')
+        logger.info('ready! Will activate at epoch %d', self.activate_at)
 
     def print_info(self):
         if self.mode == 'hull' or self.mode == 'mixed':

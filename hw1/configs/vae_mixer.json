@@ -23,6 +23,7 @@
     "hull_dim": 4,
     "extra": 0.2,
     "epoch_multiple": 1,
+    "activate_at": 50,
     "model_file_name": ["vae_squared_e8.torch.p"]
   }
 }

@@ -33,8 +33,11 @@ class ImprovedNet(nn.Module):
         self.current_epoch_num = 1
 
     def forward(self, x):
+        if self.current_epoch_num == 30:
+            logger.warn('E30: activating third convolution.')
         if self.current_epoch_num > 30:
             x = self.conv1a(x)
+            x = self.conv1b(x)
         else:
             x = self.conv1(x)
         x = F.max_pool2d(x, 2)
@@ -51,6 +54,8 @@ class ImprovedNet(nn.Module):
         x = x.view(-1, 1600)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training, p=self.dropout)
+        if self.current_epoch_num == 10:
+            logger.warn('E10: activating second FC layer.')
         if self.current_epoch_num > 10:
             x = F.relu(self.fc1a(x))
         x = self.fc2(x)
