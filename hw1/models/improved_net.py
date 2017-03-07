@@ -16,21 +16,32 @@ class ImprovedNet(nn.Module):
     """
     def __init__(self, psuedo_label_alpha_func=None):
         super(ImprovedNet, self).__init__()
-        self.dropout = 0.3
-        self.conv1 = nn.Conv2d(1, 30, kernel_size=5)
-        self.conv2 = nn.Conv2d(30, 60, kernel_size=3)
+        self.dropout = 0.35
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=5) # 28 -> 24
+        self.conv1a = nn.Conv2d(10, 20, kernel_size=5) # 24 -> 20
+        self.conv1b = nn.Conv2d(20, 30, kernel_size=5) # 20 -> 16
+        self.conv1c = nn.Conv2d(30, 60, kernel_size=5) # 16 -> 12
+        self.conv1_drop = nn.Dropout2d(p=self.dropout)
+
+        self.conv2 = nn.Conv2d(60, 90, kernel_size=3)  # 12 -> 10
         self.conv2_drop = nn.Dropout2d(p=self.dropout)
-        self.conv3 = nn.Conv2d(60, 90, kernel_size=3)
+        self.conv3 = nn.Conv2d(90, 100, kernel_size=3) # 10 -> 8 -> 4
         self.conv3_drop = nn.Dropout2d(p=self.dropout)
-        self.fc1 = nn.Linear(1440, 500)
-        self.fc2 = nn.Linear(500, 10)
+        self.fc1 = nn.Linear(1600, 800)
+        self.fc2 = nn.Linear(800, 10)
         self.psuedo_label_alpha_func = psuedo_label_alpha_func
         self.current_epoch_num = 1
 
     def forward(self, x):
         x = self.conv1(x)
-        x = F.max_pool2d(x, 2)
         x = F.relu(x)
+        x = self.conv1a(x)
+        x = F.relu(x)
+        x = self.conv1b(x)
+        x = F.relu(x)
+        x = self.conv1c(x)
+        x = F.relu(x)
+        x = self.conv1_drop(self.conv1a(x))
         # after relu: 64*10*12*12
 
         #x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
