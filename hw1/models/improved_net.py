@@ -15,14 +15,15 @@ class ImprovedNet(nn.Module):
     Sample Model
     """
     def __init__(self, psuedo_label_alpha_func=None):
-        super(Net, self).__init__()
+        super(ImprovedNet, self).__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=3)
         self.conv2_drop = nn.Dropout2d()
-        self.conv3 = nn.Conv2d(20, 20, kernel_size=3)
-        self.conv3_drop = nn.Dropout2d()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+        #self.conv3 = nn.Conv2d(20, 20, kernel_size=3)
+        #self.conv3_drop = nn.Dropout2d()
+        self.fc1 = nn.Linear(500, 320)
+        self.fc2 = nn.Linear(320, 50)
+        self.fc3 = nn.Linear(50, 10)
         self.psuedo_label_alpha_func = psuedo_label_alpha_func
         self.current_epoch_num = 1
 
@@ -33,16 +34,23 @@ class ImprovedNet(nn.Module):
         x = F.max_pool2d(x, 2)
         # after pool 64 * 10 * 12 * 12
         x = F.relu(x)
+
         # after relu: 64*10*12*12
-        #x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-        x = F.relu(F.max_pool2d(self.conv2(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        #x = F.relu(F.max_pool2d(self.conv2(x), 2))
+
         # after second conv pool 64 * 20 * 10 * 10
-        x = F.relu(F.max_pool2d(self.conv3_drop(self.conv3(x)), 2))
+        #x = F.relu(F.max_pool2d(self.conv3_drop(self.conv3(x)), 2))
+        #x = F.relu(F.max_pool2d(self.conv3(x), 2))
         # after third conv pool 64 * 20 * 4 * 4
-        x = x.view(-1, 320)
+
+        x = x.view(-1, 500)
+
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = F.relu(self.fc2(x))
+        #x = F.dropout(x, training=self.training)
+        x = F.relu(self.fc3(x))
         return [F.log_softmax(x)]
 
     def loss_func(self, output, target):
