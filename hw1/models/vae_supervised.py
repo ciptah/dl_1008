@@ -141,7 +141,7 @@ class VAEExpander(dp.Loader):
         return point * p1[1] + (1 - point) * p2[1]
 
     def get_random_from_hull(self, d):
-        return self.hull_samplers[d].__next__()
+        return next(self.hull_samplers[d])
 
     def get_random_mixed(self, d):
         if random.random() < self.mixed_mode_line_proportion:
@@ -200,7 +200,7 @@ class Mixer(dp.Loader):
             random.shuffle(iters)
             for i in iters:
                 try:
-                    yield i.__next__()
+                    yield next(i)
                     has_next = True
                 except StopIteration:
                     pass
