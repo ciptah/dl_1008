@@ -1,16 +1,16 @@
 {
   "verbose": true,
-  "model": "basic",
+  "model": "improved",
   "skip_unlabeled_training": true,
   "skip_labeled_training": false,
-  "augment_training_data": "chain",
+  "augment_training_data": "default",
 
   "training": {
     "learning_rate": 0.1,
     "dropout": 0.4,
-    "num_epochs": 30,
+    "num_epochs": 180,
     "nonlinearity": "relu",
-    "epochs_before_unlabeled": 170,
+    "epochs_before_unlabeled": 100000,
     "momentum": {
       "mu_coefficient": 0.05,
       "use_nesterov": false
@@ -18,16 +18,12 @@
   },
 
   "vae_expander": {
-    "p": 0.7,
-    "mixed_mode_line_proportion": 0.5,
-    "mode": "mixed",
+    "p": 0.5,
+    "mode": "hull",
     "hull_dim": 4,
     "extra": 0.2,
-    "epoch_multiple": 3,
-    "model_file_name": [
-      "vae_squared_e8.torch.p",
-      "vae_bce_e8.torch.p"
-    ]
+    "epoch_multiple": 1,
+    "model_file_name": ["vae_squared_e8.torch.p"]
   }
 }
 

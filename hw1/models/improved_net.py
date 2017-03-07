@@ -33,13 +33,13 @@ class ImprovedNet(nn.Module):
     def forward(self, x):
         x = self.conv1(x)
         x = F.relu(x)
-        if self.current_epoch_num > 3:
+        if self.current_epoch_num > 5:
             x = self.conv1a(x)
             x = F.relu(x)
-        if self.current_epoch_num > 6:
+        if self.current_epoch_num > 10:
             x = self.conv1b(x)
             x = F.relu(x)
-        if self.current_epoch_num > 9:
+        if self.current_epoch_num > 15:
             x = self.conv1c(x)
             x = F.relu(x)
         # after relu: 64*10*12*12
@@ -48,13 +48,13 @@ class ImprovedNet(nn.Module):
         x = F.relu(self.conv2(x))
         # after second conv pool 64 * 20 * 10 * 10
 
-        x = F.relu(F.max_pool2d(self.conv3(x)), 2)
+        x = F.relu(F.max_pool2d(self.conv3(x), 2))
         # after third conv pool 64 * 20 * 4 * 4
 
         x = x.view(-1, 1600)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training, p=self.dropout)
-        if self.current_epoch_num > 6:
+        if self.current_epoch_num > 10:
             x = F.relu(self.fc1a(x))
         x = self.fc2(x)
         return [F.log_softmax(x)]

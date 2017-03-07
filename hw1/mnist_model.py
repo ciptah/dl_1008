@@ -5,6 +5,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import torchvision
 import pandas as pd
 import pickle
 import predictive_model
@@ -45,6 +46,8 @@ def unlabeled_training(
         unlabeled_model.epoch_done(epoch - 1)
     unlabeled_model.training_done()
 
+NORM_STD = 0.3081
+NORM_MEAN = 0.1307
 
 def train_epoch(model,
                 train_loader,
@@ -63,8 +66,13 @@ def train_epoch(model,
     correct_num = 0
     batch_loss = []
     batch_acc = []
+    saved = False
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = Variable(data), Variable(target.long())
+        if current_epoch == 1 and not saved:
+            z = (data * NORM_STD + NORM_MEAN).clamp(0, 1)
+            torchvision.utils.save_image(z.data, 'sample_batch.png', nrow=8)
+            saved = True
         if unlabeled:
             target.data.fill_(-1)
         pred_dist, loss = model.train_batch(data, target)
