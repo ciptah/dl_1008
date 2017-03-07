@@ -17,7 +17,13 @@ class ImprovedNet(nn.Module):
     def __init__(self, psuedo_label_alpha_func=None):
         super(ImprovedNet, self).__init__()
         self.dropout = 0.4
+
+        # The head of the network changes at epoch 30.
+        self.conv1a = nn.Conv2d(1, 60, padding=2 kernel_size=5) # 28 -> 28
+        self.conv1b = nn.Conv2d(60, 60, kernel_size=5) # 28 -> 24 -> 12
+
         self.conv1 = nn.Conv2d(1, 60, kernel_size=5) # 28 -> 24 -> 12
+
         self.conv2 = nn.Conv2d(60, 90, kernel_size=3)  # 12 -> 10
         self.conv3 = nn.Conv2d(90, 100, kernel_size=3) # 10 -> 8 -> 4
         self.fc1 = nn.Linear(1600, 800)
@@ -27,7 +33,10 @@ class ImprovedNet(nn.Module):
         self.current_epoch_num = 1
 
     def forward(self, x):
-        x = self.conv1(x)
+        if self.current_epoch_num > 30:
+            x = self.conv1a(x)
+        else:
+            x = self.conv1(x)
         x = F.max_pool2d(x, 2)
         x = F.relu(x)
         # after relu: 64*10*12*12

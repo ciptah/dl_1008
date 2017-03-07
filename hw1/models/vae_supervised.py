@@ -97,11 +97,14 @@ class VAEExpander(dp.Loader):
         self.epoch_multiple = xp_config.get('epoch_multiple', 10)
         # - dimension to reduce to before computing convex hull.
         self.hull_dim = xp_config.get('hull_dim', 6)
+        # - at what (approximate) epoch to activate.
+        self.activate_at = xp_config.get('activate_at', 50)
         # - when in mixed mode, what percentage of randomized examples
         #   are from the line generator.
         self.mixed_mode_line_proportion = xp_config.get('mixed_mode_line_proportion', 0.5)
 
         self.vae_model = vae_model
+        self.epoch_counter = 0
 
         self.build(train_loader)
 
@@ -182,9 +185,22 @@ class VAEExpander(dp.Loader):
     def __iter__(self):
         # Impersonate a Data Loader.
         # This is slow, but can act as a plug-in replacement for the data provider.
+        self.epoch_counter += 1
+        active = False
+        if self.epoch_counter == self.activate_at:
+            logger.warn('activating VAE generator')
+        if self.epoch_counter >= self.activate_at:
+            active = True
+        limit = 5
         for multiple in range(self.epoch_multiple):
             for data, target in self.train_loader:
-                yield self.mix_samples(data, target)
+                limit = limit - 1
+                if limit == 0:
+                    return
+                if active:
+                    yield self.mix_samples(data, target)
+                else:
+                    yield data, target
 
 class Mixer(dp.Loader):
     """Pools multiple VAEExpanders together and calls them in alternate."""
