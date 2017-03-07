@@ -17,10 +17,10 @@ class ImprovedNet(nn.Module):
     def __init__(self, psuedo_label_alpha_func=None):
         super(ImprovedNet, self).__init__()
         self.dropout = 0.35
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5) # 28 -> 24
-        self.conv1a = nn.Conv2d(10, 20, kernel_size=5) # 24 -> 20
-        self.conv1b = nn.Conv2d(20, 30, kernel_size=5) # 20 -> 16
-        self.conv1c = nn.Conv2d(30, 60, kernel_size=5) # 16 -> 12
+        self.conv1 = nn.Conv2d(1, 60, kernel_size=5) # 28 -> 24
+        self.conv1a = nn.Conv2d(60, 60, kernel_size=5) # 24 -> 20
+        self.conv1b = nn.Conv2d(60, 60, kernel_size=5) # 20 -> 16
+        self.conv1c = nn.Conv2d(60, 60, kernel_size=5) # 16 -> 12
 
         self.conv2 = nn.Conv2d(60, 90, kernel_size=3)  # 12 -> 10
         self.conv3 = nn.Conv2d(90, 100, kernel_size=3) # 10 -> 8 -> 4
