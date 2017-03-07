@@ -17,13 +17,13 @@ class ImprovedNet(nn.Module):
     def __init__(self, psuedo_label_alpha_func=None):
         super(ImprovedNet, self).__init__()
         self.dropout = 0.3
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=3)
+        self.conv1 = nn.Conv2d(1, 30, kernel_size=5)
+        self.conv2 = nn.Conv2d(30, 60, kernel_size=3)
         self.conv2_drop = nn.Dropout2d(p=self.dropout)
-        self.conv3 = nn.Conv2d(20, 20, kernel_size=3)
+        self.conv3 = nn.Conv2d(60, 90, kernel_size=3)
         self.conv3_drop = nn.Dropout2d(p=self.dropout)
-        self.fc1 = nn.Linear(320, 100)
-        self.fc2 = nn.Linear(100, 10)
+        self.fc1 = nn.Linear(1440, 500)
+        self.fc2 = nn.Linear(500, 10)
         self.psuedo_label_alpha_func = psuedo_label_alpha_func
         self.current_epoch_num = 1
 
@@ -40,7 +40,7 @@ class ImprovedNet(nn.Module):
         x = F.relu(F.max_pool2d(self.conv3_drop(self.conv3(x)), 2))
         # after third conv pool 64 * 20 * 4 * 4
 
-        x = x.view(-1, 320)
+        x = x.view(-1, 1440)
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training, p=self.dropout)
         x = self.fc2(x)
