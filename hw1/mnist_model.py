@@ -120,17 +120,7 @@ def validate_model(model, test_data_provider):
     return float(correct) / test_loader.example_count()
 
 
-def predict_model(model, pred_data_loader):
-    model.start_prediction()
-    pred_loader = pred_data_loader.loader
-    label_predict = []
-    for _, content in enumerate(pred_loader):
-        data = Variable(content[0])
-        output = model.predict_batch(data)
-        pred = output[1].numpy().tolist()
-        label_predict += [x[0] for x in pred]
-    df = pd.DataFrame({"ID": range(len(label_predict)), "label": label_predict})
-    return df
+
 
 
 def main(config_filename):
@@ -145,8 +135,6 @@ def main(config_filename):
     logger.info('train unlabeled provider loaded')
     validation_provider = data_provider.DataProvider(file_dir="validation_data.p", train=False)
     logger.info('validation provider loaded')
-    pred_label = data_provider.DataProvider(file_dir="test.p", train=False)
-    logger.info('test provider loaded')
 
     # unlabeled training
     if not config.get('skip_unlabeled_training'):
