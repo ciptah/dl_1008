@@ -1,0 +1,11 @@
+{
+  "verbose": true,
+  "phases": ["training"],
+
+  "training": {
+    "num_epochs": 180,
+    "report_every_n_batch": 10,
+    "save_dir": "./data/model",
+    "model": "basic"
+  }
+}
