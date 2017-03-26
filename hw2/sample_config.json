@@ -1,6 +1,7 @@
 {
   "verbose": true,
   "template": {
+    "data": "./data/penn",
     "model": ["LSTM", "GRU"],
     "emsize": [50, 75, 100],
     "nhid": [50, 75, 100],
@@ -13,9 +14,8 @@
     "seed": 1111,
     "log_interval": 200,
     "logfile": "logs/{}.txt",
-    "configfile": "configs/{}.json",
     "save": "models/{}.pt"
-  }
+  },
   "max_saved_models": 50,
   "training_cap": 100
 }

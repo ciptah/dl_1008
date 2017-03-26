@@ -7,17 +7,29 @@ import math
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from model import RNNModel
 import logging
 import config
+import json
 import sys
 
 import data
 import model
 
-logger = logging.getLogger('main')
-config = build_config(sys.argv[1])
+def run(args, config):
+    # Change log file
+    fileh = logging.FileHandler(args.logfile, 'w')
+    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    fileh.setFormatter(formatter)
 
-def run(args):
+    logger = logging.getLogger('run')  # root logger
+    logger.setLevel(logging.INFO)
+    for hdlr in logger.handlers[:]:  # remove all old handlers
+        logger.removeHandler(hdlr)
+    logger.addHandler(fileh)      # set the new handler
+
+    logger.info('CONFIGURATION: %s', json.dumps(config, indent=2))
+
     # Set the random seed manually for reproducibility.
     torch.manual_seed(args.seed)
 
@@ -43,7 +55,7 @@ def run(args):
     ###############################################################################
 
     ntokens = len(corpus.dictionary)
-    model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers)
+    model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers)
     criterion = nn.CrossEntropyLoss()
 
     ###############################################################################
@@ -69,7 +81,7 @@ def run(args):
 
 
     def get_batch(source, i, evaluation=False):
-        seq_len = min(args.bptt, len(source) - 1 - i)
+        seq_len = min(args.sequence_length, len(source) - 1 - i)
         data = Variable(source[i:i+seq_len], volatile=evaluation)
         target = Variable(source[i+1:i+1+seq_len].view(-1))
         return data, target
@@ -79,7 +91,7 @@ def run(args):
         total_loss = 0
         ntokens = len(corpus.dictionary)
         hidden = model.init_hidden(eval_batch_size)
-        for i in range(0, data_source.size(0) - 1, args.bptt):
+        for i in range(0, data_source.size(0) - 1, args.sequence_length):
             data, targets = get_batch(data_source, i, evaluation=True)
             output, hidden = model(data, hidden)
             output_flat = output.view(-1, ntokens)
@@ -93,7 +105,7 @@ def run(args):
         start_time = time.time()
         ntokens = len(corpus.dictionary)
         hidden = model.init_hidden(args.batch_size)
-        for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
+        for batch, i in enumerate(range(0, train_data.size(0) - 1, args.sequence_length)):
             data, targets = get_batch(train_data, i)
             hidden = repackage_hidden(hidden)
             model.zero_grad()
@@ -110,13 +122,15 @@ def run(args):
             if batch % args.log_interval == 0 and batch > 0:
                 cur_loss = total_loss[0] / args.log_interval
                 elapsed = time.time() - start_time
-                print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
+                logger.info('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
                         'loss {:5.2f} | ppl {:8.2f}'.format(
-                    epoch, batch, len(train_data) // args.bptt, lr,
+                    epoch, batch, len(train_data) // args.sequence_length, lr,
                     elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
                 total_loss = 0
                 start_time = time.time()
-
+            # TODO: Remove, debug code
+            if batch > 210:
+                return
 
     # Loop over epochs.
     lr = args.lr
@@ -125,11 +139,11 @@ def run(args):
         epoch_start_time = time.time()
         train()
         val_loss = evaluate(val_data)
-        print('-' * 89)
-        print('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
+        logger.info('-' * 89)
+        logger.info('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
                 'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
                                            val_loss, math.exp(val_loss)))
-        print('-' * 89)
+        logger.info('-' * 89)
         # Anneal the learning rate.
         if prev_val_loss and val_loss > prev_val_loss:
             lr /= 4
@@ -138,12 +152,24 @@ def run(args):
 
     # Run on test data and save the model.
     test_loss = evaluate(test_data)
-    print('=' * 89)
-    print('| End of training | test loss {:5.2f} | test ppl {:8.2f}'.format(
+    logger.info('=' * 89)
+    logger.info('| End of training | test loss {:5.2f} | test ppl {:8.2f}'.format(
         test_loss, math.exp(test_loss)))
-    print('=' * 89)
+    logger.info('=' * 89)
     if args.save != '':
         with open(args.save, 'wb') as f:
             torch.save(model, f)
 
     return test_loss
+
+templatefile = sys.argv[1]
+global_config = config.build_config_template(templatefile)
+
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+for conf in config.generate_configs(global_config['template']):
+    args = AttrDict(conf)
+    run(args, conf)

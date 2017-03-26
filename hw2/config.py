@@ -63,9 +63,7 @@ def generate_configs(template, max_runs=1000):
             setter(config)
         config['experiment_id'] = experiment_id
         config['logfile'] = config['logfile'].format(experiment_id)
-        config['configfile'] = config['configfile'].format(experiment_id)
         config['save'] = config['save'].format(experiment_id)
-        logger.debug('CONFIGURATION: %s', json.dumps(config, indent=2))
         yield config
 
 def build_config_template(config_filename):
@@ -84,6 +82,5 @@ def build_config_template(config_filename):
         # Default log level is info.
         logging.basicConfig(level=logging.INFO)
 
-    logger.info('CONFIGURATION: %s', json.dumps(config_json, indent=2))
     return config_json
 
