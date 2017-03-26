@@ -1,0 +1,5 @@
+Q: How to train a model?
+A: You need to first edit the json format config file. For test purpose, you can use sample_config.json.
+   Secondly, create direction {current_workspace}/data/model/.
+   You can launch a training by using command "python main.py [config_file_name]". Model will be saved to ./data/model/.
+   
