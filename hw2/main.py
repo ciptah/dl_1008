@@ -12,11 +12,12 @@ import logging
 import config
 import json
 import sys
+import pickle
 
 import data
 import model
 
-def run(args, config):
+def run(args, config, min_test_loss):
     # Change log file
     fileh = logging.FileHandler(args.logfile, 'w')
     formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
@@ -131,24 +132,34 @@ def run(args, config):
                     elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
                 total_loss = 0
                 start_time = time.time()
+            # TODO: remove this debugging code.
+            if batch > 50:
+                return
 
     # Loop over epochs.
     lr = args.lr
     prev_val_loss = None
+    epoch_logs = []
     for epoch in range(1, args.epochs+1):
         epoch_start_time = time.time()
         train()
         val_loss = evaluate(val_data)
         logger.info('-' * 89)
+        time_s = time.time() - epoch_start_time
         logger.info('| end of epoch {:3d} | time: {:5.2f}s | valid loss {:5.2f} | '
-                'valid ppl {:8.2f}'.format(epoch, (time.time() - epoch_start_time),
+                'valid ppl {:8.2f}'.format(epoch, time_s,
                                            val_loss, math.exp(val_loss)))
         logger.info('-' * 89)
+        epoch_logs.append({
+            'epoch': epoch
+            'time_s': time_s
+            'val_loss': val_loss
+            'val_ppl': val_ppl
+        })
         # Anneal the learning rate.
         if prev_val_loss and val_loss > prev_val_loss:
             lr /= 4
         prev_val_loss = val_loss
-
 
     # Run on test data and save the model.
     test_loss = evaluate(test_data)
@@ -156,9 +167,15 @@ def run(args, config):
     logger.info('| End of training | test loss {:5.2f} | test ppl {:8.2f}'.format(
         test_loss, math.exp(test_loss)))
     logger.info('=' * 89)
-    if args.save != '':
+    if args.save != '' and test_loss < min_test_loss:
         with open(args.save, 'wb') as f:
             torch.save(model, f)
+
+    config['epoch_logs'] = epoch_logs
+    config['test_loss'] = test_loss
+    config['test_ppl'] = math.exp(test_loss)
+    with open(args.results, 'w') as r:
+        json.dump(config, r, indent=2)
 
     # Revert random state.
     torch.set_rng_state(init_state)
@@ -172,6 +189,9 @@ class AttrDict(dict):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
+min_test_loss = 1e90
 for conf in config.generate_configs(global_config['template']):
     args = AttrDict(conf)
-    run(args, conf)
+    test_loss = run(args, conf, min_test_loss)
+    if test_loss < min_test_loss:
+        min_test_loss = test_loss

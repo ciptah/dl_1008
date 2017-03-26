@@ -12,8 +12,9 @@
     "batch_size": 20,
     "sequence_length": [20, 25, 30],
     "seed": 1111,
-    "log_interval": 200,
+    "log_interval": 20,
     "logfile": "logs/{}.txt",
+    "results": "results/{}.txt",
     "save": "models/{}.pt"
   },
   "max_saved_models": 50,
