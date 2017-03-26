@@ -151,10 +151,10 @@ def run(args, config, min_test_loss):
                                            val_loss, math.exp(val_loss)))
         logger.info('-' * 89)
         epoch_logs.append({
-            'epoch': epoch
-            'time_s': time_s
-            'val_loss': val_loss
-            'val_ppl': val_ppl
+            'epoch': epoch,
+            'time_s': time_s,
+            'val_loss': val_loss,
+            'val_ppl': math.exp(val_loss)
         })
         # Anneal the learning rate.
         if prev_val_loss and val_loss > prev_val_loss:
@@ -169,6 +169,8 @@ def run(args, config, min_test_loss):
     logger.info('=' * 89)
     if args.save != '' and test_loss < min_test_loss:
         with open(args.save, 'wb') as f:
+            torch.save(model, f)
+        with open('models/best_model.pt', 'wb') as f:
             torch.save(model, f)
 
     config['epoch_logs'] = epoch_logs
