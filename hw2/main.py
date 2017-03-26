@@ -131,9 +131,6 @@ def run(args, config):
                     elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
                 total_loss = 0
                 start_time = time.time()
-            # TODO: Remove, debug code
-            if batch > 210:
-                return
 
     # Loop over epochs.
     lr = args.lr
