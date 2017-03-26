@@ -32,6 +32,9 @@ def run(args, config):
 
     # Set the random seed manually for reproducibility.
     torch.manual_seed(args.seed)
+    init_state = torch.get_rng_state()
+
+    logger.info('rng state: %s', init_state)
 
     ###############################################################################
     # Load data
@@ -160,6 +163,8 @@ def run(args, config):
         with open(args.save, 'wb') as f:
             torch.save(model, f)
 
+    # Revert random state.
+    torch.set_rng_state(init_state)
     return test_loss
 
 templatefile = sys.argv[1]
