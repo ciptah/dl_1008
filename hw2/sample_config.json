@@ -1,11 +1,18 @@
 {
   "verbose": true,
-  "phases": ["training"],
-
-  "training": {
-    "num_epochs": 180,
-    "report_every_n_batch": 10,
-    "save_dir": "./data/model",
-    "model": "basic"
-  }
+  "model": ["LSTM", "GRU"],
+  "emsize": [50, 75, 100],
+  "nhid": [50, 75, 100],
+  "nlayers": [1, 2, 3],
+  "lr": 20,
+  "clip": [0.5, 0.6, 0.4],
+  "epochs": 2,
+  "batch_size": 20,
+  "sequence_length": [20, 25, 30],
+  "seed": 1111,
+  "log_interval": 200,
+  "logfile": "logs/{}.txt",
+  "configfile": "configs/{}.json",
+  "save": "models/{}.pt",
+  "max_saved_models": 50
 }
