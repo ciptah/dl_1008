@@ -26,7 +26,7 @@ def elastic_transform(image, alpha, sigma, random_state=None):
     return map_coordinates(image, indices, order=1).reshape(shape)
 
 
-def preprocess_img(img, width, height, limits_ranslate=(-3, 3), limits_rotate=(-20, 20)):
+def preprocess_img(img, width, height, limits_ranslate=(-2, 2), limits_rotate=(-15, 15)):
     # add noise
     img += np.random.normal(scale=0.2, size=(width, height))
 
@@ -40,7 +40,7 @@ def preprocess_img(img, width, height, limits_ranslate=(-3, 3), limits_rotate=(-
     ndimage.rotate(img, degree, reshape=False, output=img[:, :])
 
     # elastic distrotion
-    img[:, :] = elastic_transform(img, 36, 8)
+    #img[:, :] = elastic_transform(img, 36, 8)
     # return img_arr
 
 
