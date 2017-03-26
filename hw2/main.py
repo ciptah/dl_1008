@@ -173,11 +173,14 @@ def run(args, config, min_test_loss):
         with open('models/best_model.pt', 'wb') as f:
             torch.save(model, f)
 
-    config['epoch_logs'] = epoch_logs
-    config['test_loss'] = test_loss
-    config['test_ppl'] = math.exp(test_loss)
+    # Log results in a machine-readable JSON.
+    result = {}
+    result['config'] = config
+    result['epoch_logs'] = epoch_logs
+    result['test_loss'] = test_loss
+    result['test_ppl'] = math.exp(test_loss)
     with open(args.results, 'w') as r:
-        json.dump(config, r, indent=2)
+        json.dump(result, r, indent=2)
 
     # Revert random state.
     torch.set_rng_state(init_state)
