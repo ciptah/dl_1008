@@ -96,3 +96,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+hw2/data
+
+
