@@ -17,35 +17,6 @@ import model
 logger = logging.getLogger('main')
 config = build_config(sys.argv[1])
 
-parser = argparse.ArgumentParser(description='PyTorch PennTreeBank RNN/LSTM Language Model')
-parser.add_argument('--model', type=str, default='LSTM',
-                    help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU)')
-parser.add_argument('--emsize', type=int, default=50,
-                    help='size of word embeddings')
-parser.add_argument('--nhid', type=int, default=50,
-                    help='humber of hidden units per layer')
-parser.add_argument('--nlayers', type=int, default=1,
-                    help='number of layers')
-parser.add_argument('--lr', type=float, default=20,
-                    help='initial learning rate')
-parser.add_argument('--clip', type=float, default=0.5,
-                    help='gradient clipping')
-parser.add_argument('--epochs', type=int, default=6,
-                    help='upper epoch limit')
-parser.add_argument('--batch-size', type=int, default=20, metavar='N',
-                    help='batch size')
-parser.add_argument('--bptt', type=int, default=20,
-                    help='sequence length')
-parser.add_argument('--seed', type=int, default=1111,
-                    help='random seed')
-parser.add_argument('--cuda', action='store_true',
-                    help='use CUDA')
-parser.add_argument('--log-interval', type=int, default=200, metavar='N',
-                    help='report interval')
-parser.add_argument('--save', type=str,  default='model.pt',
-                    help='path to save the final model')
-args = parser.parse_args()
-
 def run(args):
     # Set the random seed manually for reproducibility.
     torch.manual_seed(args.seed)
@@ -60,8 +31,6 @@ def run(args):
         nbatch = data.size(0) // bsz
         data = data.narrow(0, 0, nbatch * bsz)
         data = data.view(bsz, -1).t().contiguous()
-        if args.cuda:
-            data = data.cuda()
         return data
 
     eval_batch_size = 10
@@ -75,9 +44,6 @@ def run(args):
 
     ntokens = len(corpus.dictionary)
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers)
-    if args.cuda:
-        model.cuda()
-
     criterion = nn.CrossEntropyLoss()
 
     ###############################################################################
