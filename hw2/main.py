@@ -132,9 +132,6 @@ def run(args, config, min_test_loss):
                     elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
                 total_loss = 0
                 start_time = time.time()
-            # TODO: remove this debugging code.
-            if batch > 50:
-                return
 
     # Loop over epochs.
     lr = args.lr
