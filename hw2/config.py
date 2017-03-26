@@ -32,6 +32,9 @@ def generate_configs(template):
         for setter in template:
             setter(config)
         config['experiment_id'] = experiment_id
+        config['logfile'] = config['logfile'].format(experiment_id)
+        config['configfile'] = config['configfile'].format(experiment_id)
+        config['save'] = config['save'].format(experiment_id)
         logger.debug('CONFIGURATION: %s', json.dumps(config, indent=2))
         yield config
 
