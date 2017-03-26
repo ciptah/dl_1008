@@ -138,7 +138,16 @@ def main(config_filename):
 
     # unlabeled training
     if not config.get('skip_unlabeled_training'):
+        train_unlabeled = data_provider.DataProvider(file_dir="train_unlabeled.p", train=True)
+        logger.info('train unlabeled provider loaded')
         unlabeled_training(config, train_unlabeled.loader)
+    else:
+        train_unlabeled = None
+    validation_provider = data_provider.DataProvider(file_dir="validation_data.p", train=False)
+    logger.info('validation provider loaded')
+    #pred_label = data_provider.DataProvider(file_dir="test.p", train=False)
+    #logger.info('test provider loaded')
+
 
     if config.get('skip_labeled_training', False):
         logger.info('skipping labeled training.')
