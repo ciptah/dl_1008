@@ -23,11 +23,12 @@ def run(args, config, min_test_loss):
     formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
     fileh.setFormatter(formatter)
 
-    logger = logging.getLogger('run')  # root logger
+    logger = logging.getLogger('')  # root logger
     logger.setLevel(logging.INFO)
     for hdlr in logger.handlers[:]:  # remove all old handlers
         logger.removeHandler(hdlr)
     logger.addHandler(fileh)      # set the new handler
+    logger = logging.getLogger('run')
 
     logger.info('CONFIGURATION: %s', json.dumps(config, indent=2))
 
@@ -41,7 +42,7 @@ def run(args, config, min_test_loss):
     # Load data
     ###############################################################################
 
-    corpus = data.Corpus(args.data)
+    corpus = data.Corpus(args.data, args.vocab_size)
 
     def batchify(data, bsz):
         nbatch = data.size(0) // bsz

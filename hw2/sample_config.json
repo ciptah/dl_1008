@@ -10,6 +10,7 @@
     "clip": 0.5,
     "epochs": 6,
     "batch_size": 20,
+    "vocab_size": 8000,
     "sequence_length": 20,
     "seed": 1111,
     "log_interval": 200,
