@@ -1,6 +1,7 @@
 import os
 import torch
 import logging
+from collections import Counter
 
 logger = logging.getLogger('corpus')
 
@@ -40,7 +41,7 @@ class Corpus(object):
                 counter.update(words)
 
         # Limit
-        common = [x[0] for x in self.counter.most_common()]
+        common = [x[0] for x in counter.most_common()]
         if limit > 0:
             common = common[:limit]
         # Necessary tokens
@@ -56,8 +57,8 @@ class Corpus(object):
 
         logger.info('init dict from %s', path)
         logger.info('sample: %s ... %s', common[:5], common[-5:])
-        if self.limit > 0:
-            logger.info('limited to: %d', self.limit)
+        if limit > 0:
+            logger.info('limited to: %d', limit)
 
     def tokenize(self, path):
         """Tokenizes a text file."""

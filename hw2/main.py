@@ -25,7 +25,8 @@ def run(args, config, min_test_loss):
 
     logger = logging.getLogger('')  # root logger
     logger.setLevel(logging.INFO)
-    for hdlr in logger.handlers[:]:  # remove all old handlers
+    # Second handler is the file logger.
+    for hdlr in logger.handlers[1:]:  # remove all old handlers
         logger.removeHandler(hdlr)
     logger.addHandler(fileh)      # set the new handler
     logger = logging.getLogger('run')
