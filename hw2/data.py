@@ -42,6 +42,7 @@ class Corpus(object):
 
         # Limit
         common = [x[0] for x in counter.most_common()]
+        common = sorted(common)
         if limit > 0:
             common = common[:limit]
         # Necessary tokens
