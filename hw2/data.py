@@ -41,8 +41,8 @@ class Corpus(object):
                 counter.update(words)
 
         # Limit
-        common = [x[0] for x in counter.most_common()]
-        common = sorted(common)
+        common = sorted(counter.most_common(), key=lambda x: (-x[1], x[0]))
+        common = [x[0] for x in common]
         if limit > 0:
             common = common[:limit]
         # Necessary tokens
