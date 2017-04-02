@@ -49,6 +49,8 @@ def run(args, config, min_test_loss):
         nbatch = data.size(0) // bsz
         data = data.narrow(0, 0, nbatch * bsz)
         data = data.view(bsz, -1).t().contiguous()
+        if args.cuda:
+            data = data.cuda()
         return data
 
     eval_batch_size = 10
@@ -62,6 +64,8 @@ def run(args, config, min_test_loss):
 
     ntokens = len(corpus.dictionary)
     model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout)
+    if args.cuda:
+        model.cuda()
     criterion = nn.CrossEntropyLoss()
 
     ###############################################################################
