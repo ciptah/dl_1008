@@ -61,7 +61,7 @@ def run(args, config, min_test_loss):
     ###############################################################################
 
     ntokens = len(corpus.dictionary)
-    model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers)
+    model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout)
     criterion = nn.CrossEntropyLoss()
 
     ###############################################################################
