@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import logging
+import numpy as np
+import matplotlib.pyplot as plt
 
 import data
 import model
@@ -79,10 +81,19 @@ def evaluate(data_source):
     logger.info(per_word)
     logger.info(pw_count)
 
+    losses = per_word / pw_count
     with open('per_word_loss.csv', 'w') as w:
-        losses = per_word / pw_count
         for x in losses.numpy():
             w.write('{}\n'.format(x))
+
+    plt.figure()
+    plt.bar(range(args.sequence_length), losses.numpy())
+    plt.savefig('per_word_loss.png')
+
+    plt.figure()
+    plt.bar(range(args.sequence_length), np.exp(losses.numpy()))
+    plt.savefig('per_word_pplx.png')
+
     return total_loss / len(data_source)
 
 # Run on test data and save the model.
