@@ -1,0 +1,18 @@
+INFO:run:CONFIGURATION: {
+  "experiment_id": "20170329-093324-00",
+  "logfile": "logs/20170329-093324-00.txt",
+  "clip": 0.5,
+  "nhid": 50,
+  "model": "LSTM",
+  "results": "results/20170329-093324-00.txt",
+  "nlayers": 1,
+  "epochs": 2,
+  "log_interval": 20,
+  "data": "./data/penn",
+  "sequence_length": 20,
+  "lr": 20,
+  "seed": 1111,
+  "emsize": 50,
+  "batch_size": 20,
+  "save": "models/20170329-093324-00.pt"
+}

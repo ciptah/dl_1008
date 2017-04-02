@@ -1,0 +1,36 @@
+{
+  "test_loss": 5.144643561203445, 
+  "config": {
+    "nlayers": 2, 
+    "clip": 0.5, 
+    "emsize": 50, 
+    "nhid": 50, 
+    "batch_size": 20, 
+    "results": "results/20170326-171712-01.txt", 
+    "epochs": 2, 
+    "logfile": "logs/20170326-171712-01.txt", 
+    "seed": 1111, 
+    "lr": 20, 
+    "log_interval": 20, 
+    "experiment_id": "20170326-171712-01", 
+    "sequence_length": 20, 
+    "model": "LSTM", 
+    "save": "models/20170326-171712-01.pt", 
+    "data": "./data/penn"
+  }, 
+  "epoch_logs": [
+    {
+      "epoch": 1, 
+      "val_ppl": 209.1087527357903, 
+      "val_loss": 5.342854464648862, 
+      "time_s": 281.3479700088501
+    }, 
+    {
+      "epoch": 2, 
+      "val_ppl": 176.47988729170845, 
+      "val_loss": 5.173206916858731, 
+      "time_s": 282.68488097190857
+    }
+  ], 
+  "test_ppl": 171.51034083520784
+}

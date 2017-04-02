@@ -1,0 +1,28 @@
+INFO:run:CONFIGURATION: {
+  "save": "models/20170326-160830-00.pt",
+  "log_interval": 20,
+  "clip": 0.5,
+  "nhid": 50,
+  "results": "results/20170326-160830-00.txt",
+  "nlayers": 1,
+  "batch_size": 20,
+  "lr": 20,
+  "seed": 1111,
+  "data": "./data/penn",
+  "epochs": 2,
+  "model": "LSTM",
+  "experiment_id": "20170326-160830-00",
+  "logfile": "logs/20170326-160830-00.txt",
+  "sequence_length": 20,
+  "emsize": 50
+}
+INFO:run:rng state: 
+  87
+   4
+   0
+ ⋮  
+   0
+   0
+   0
+[torch.ByteTensor of size 5048]
+

@@ -1,0 +1,26 @@
+INFO:run:CONFIGURATION: {
+  "weight_decay": 0.1,
+  "nlayers": 1,
+  "nhid": 50,
+  "logfile": "logs/20170329-101429-00.txt",
+  "results": "results/20170329-101429-00.txt",
+  "batch_size": 20,
+  "sequence_length": 20,
+  "seed": 1111,
+  "clip": 0.5,
+  "model": "LSTM",
+  "emsize": 50,
+  "epochs": 2,
+  "log_interval": 20,
+  "lr": 20,
+  "data": "./data/penn",
+  "save": "models/20170329-101429-00.pt",
+  "momentum": 0.5,
+  "experiment_id": "20170329-101429-00"
+}
+INFO:run:| epoch   1 |    20/ 2323 batches | lr 20.00 | ms/batch 252.43 | loss  9.54 | ppl 13919.34
+INFO:run:| epoch   1 |    40/ 2323 batches | lr 20.00 | ms/batch 232.88 | loss  9.09 | ppl  8845.14
+INFO:run:| epoch   1 |    60/ 2323 batches | lr 20.00 | ms/batch 248.47 | loss  9.08 | ppl  8752.77
+INFO:run:| epoch   1 |    80/ 2323 batches | lr 20.00 | ms/batch 399.95 | loss  9.09 | ppl  8831.26
+INFO:run:| epoch   1 |   100/ 2323 batches | lr 20.00 | ms/batch 734.35 | loss  9.09 | ppl  8870.54
+INFO:run:| epoch   1 |   120/ 2323 batches | lr 20.00 | ms/batch 714.51 | loss  9.08 | ppl  8794.26
