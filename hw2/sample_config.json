@@ -3,10 +3,12 @@
   "template": {
     "data": "./data/penn",
     "model": "LSTM",
+    "optim": "adam",
     "emsize": 50,
     "nhid": [50, 100],
     "nlayers": 1,
     "lr": 20,
+    "weight_decay": 0,
     "clip": 0.5,
     "epochs": 3,
     "batch_size": 20,

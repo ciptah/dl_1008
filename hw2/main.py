@@ -64,6 +64,10 @@ def run(args, config, min_test_loss):
     ntokens = len(corpus.dictionary)
     model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers)
     criterion = nn.CrossEntropyLoss()
+    if args.optim == 'adam':
+        opt = O.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    else:
+        opt = O.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
     ###############################################################################
     # Training code
@@ -121,8 +125,9 @@ def run(args, config, min_test_loss):
             loss.backward()
 
             clipped_lr = lr * clip_gradient(model, args.clip)
-            for p in model.parameters():
-                p.data.add_(-clipped_lr, p.grad.data)
+            for param_group in opt.param_groups:
+                param_group['lr'] = clipped_lr
+            opt.step()
 
             total_loss += loss.data
 
