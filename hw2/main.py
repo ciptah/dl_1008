@@ -46,7 +46,7 @@ def run(args, config, min_test_loss):
     # Load data
     ###############################################################################
 
-    corpus = data.Corpus(args.data)
+    corpus = data.Corpus(args.data, args.vocab_size)
 
     def batchify(data, bsz):
         nbatch = data.size(0) // bsz
