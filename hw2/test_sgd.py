@@ -13,6 +13,7 @@ import config
 import json
 import sys
 import pickle
+import torch.optim as O
 
 import data
 import model
@@ -61,7 +62,9 @@ def run(args, config, min_test_loss):
     ntokens = len(corpus.dictionary)
     model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers)
     criterion = nn.CrossEntropyLoss()
-
+    opt = O.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    #opt = O.Adam(model.parameters(), lr=args.lr)
+    
     ###############################################################################
     # Training code
     ###############################################################################
@@ -116,10 +119,11 @@ def run(args, config, min_test_loss):
             output, hidden = model(data, hidden)
             loss = criterion(output.view(-1, ntokens), targets)
             loss.backward()
-
+            
             clipped_lr = lr * clip_gradient(model, args.clip)
-            for p in model.parameters():
-                p.data.add_(-clipped_lr, p.grad.data)
+            for param_group in opt.param_groups:
+                    param_group['lr'] = clipped_lr
+            opt.step()
 
             total_loss += loss.data
 

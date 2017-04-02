@@ -1,0 +1,27 @@
+INFO:run:CONFIGURATION: {
+  "batch_size": 20,
+  "nlayers": 1,
+  "log_interval": 20,
+  "sequence_length": 20,
+  "save": "models/20170329-093225-00.pt",
+  "results": "results/20170329-093225-00.txt",
+  "lr": 20,
+  "logfile": "logs/20170329-093225-00.txt",
+  "seed": 1111,
+  "epochs": 2,
+  "clip": 0.5,
+  "nhid": 50,
+  "model": "LSTM",
+  "experiment_id": "20170329-093225-00",
+  "data": "./data/penn",
+  "emsize": 50
+}
+INFO:run:| epoch   1 |    20/ 2323 batches | lr 20.00 | ms/batch 248.62 | loss  8.22 | ppl  3697.51
+INFO:run:| epoch   1 |    40/ 2323 batches | lr 20.00 | ms/batch 230.20 | loss  7.14 | ppl  1265.40
+INFO:run:| epoch   1 |    60/ 2323 batches | lr 20.00 | ms/batch 228.50 | loss  6.86 | ppl   952.88
+INFO:run:| epoch   1 |    80/ 2323 batches | lr 20.00 | ms/batch 242.52 | loss  6.77 | ppl   871.73
+INFO:run:| epoch   1 |   100/ 2323 batches | lr 20.00 | ms/batch 247.81 | loss  6.59 | ppl   727.37
+INFO:run:| epoch   1 |   120/ 2323 batches | lr 20.00 | ms/batch 242.96 | loss  6.36 | ppl   580.43
+INFO:run:| epoch   1 |   140/ 2323 batches | lr 20.00 | ms/batch 283.17 | loss  6.37 | ppl   584.53
+INFO:run:| epoch   1 |   160/ 2323 batches | lr 20.00 | ms/batch 246.82 | loss  6.22 | ppl   500.61
+INFO:run:| epoch   1 |   180/ 2323 batches | lr 20.00 | ms/batch 245.21 | loss  6.07 | ppl   432.43
