@@ -7,6 +7,8 @@ import torch.nn as nn
 from torch.autograd import Variable
 import logging
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 
@@ -24,6 +26,8 @@ parser.add_argument('--checkpoint', type=str, default='./best_model.pt',
                     help='model checkpoint to use')
 parser.add_argument('--sequence_length', type=int, default=20,
                     help='how long each sentence is.')
+parser.add_argument('--cuda', type=bool, default=False,
+                    help='set to true if model was built with cuda.')
 args = parser.parse_args()
 
 with open(args.checkpoint, 'rb') as f:
@@ -41,6 +45,8 @@ def batchify(data, bsz):
     nbatch = data.size(0) // bsz
     data = data.narrow(0, 0, nbatch * bsz)
     data = data.view(bsz, -1).t().contiguous()
+    if args.cuda:
+        data = data.cuda()
     return data
 
 def get_batch(source, i, evaluation=False):
@@ -98,7 +104,7 @@ def evaluate(data_source):
     logger.info('saved per_word_pplx.png')
 
     # Embed using T-SNE
-    emb_np = list(model.encoder.parameters())[0].data.numpy()
+    emb_np = list(model.encoder.parameters())[0].cpu().data.numpy()
     logger.info('embeddings: %s', emb_np.shape)
     tsne = TSNE()
     emb_tsne = tsne.fit_transform(emb_np)
