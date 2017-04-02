@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 *.swp
 
+models/*.pt
+results/*.txt
+logs/*.txt
+
 # C extensions
 *.so
 

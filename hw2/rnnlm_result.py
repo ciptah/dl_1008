@@ -94,6 +94,8 @@ def evaluate(data_source):
     plt.bar(range(args.sequence_length), np.exp(losses.numpy()))
     plt.savefig('per_word_pplx.png')
 
+    embeddings = model.encoder
+
     return total_loss / len(data_source)
 
 # Run on test data and save the model.
