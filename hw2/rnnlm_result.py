@@ -43,7 +43,7 @@ def batchify(data, bsz):
 def get_batch(source, i, evaluation=False):
     seq_len = min(args.sequence_length, len(source) - 1 - i)
     data = Variable(source[i:i+seq_len], volatile=evaluation)
-    target = Variable(source[i+1:i+1+seq_len].view(-1))
+    target = Variable(source[i+1:i+1+seq_len])
     return data, target
 
 def repackage_hidden(h):
@@ -59,15 +59,31 @@ def evaluate(data_source):
     total_loss = 0
     ntokens = len(corpus.dictionary)
     hidden = model.init_hidden(eval_batch_size)
+    per_word = torch.Tensor(args.sequence_length)
+    pw_count = torch.Tensor(args.sequence_length)
+    per_word.fill_(0.0)
+    pw_count.fill_(0)
     for i in range(0, data_source.size(0) - 1, args.sequence_length):
         data, targets = get_batch(data_source, i, evaluation=True)
         output, hidden = model(data, hidden)
-        output_flat = output.view(-1, ntokens)
-        batch_loss = len(data) * criterion(output_flat, targets).data
+        # Dimension 0 is the sequence length.
+        batch_loss = 0.0
+        for w in range(len(data)):
+            loss = criterion(output[w,:,:], targets[w,:]).data[0]
+            per_word[w] += loss
+            pw_count[w] += 1
+            batch_loss += loss
         total_loss += batch_loss
         hidden = repackage_hidden(hidden)
-        logger.info('batch loss: %.2f | total loss: %.2f', batch_loss[0], total_loss[0])
-    return total_loss[0] / len(data_source)
+        logger.info('batch loss: %.2f | total loss: %.2f', batch_loss, total_loss)
+    logger.info(per_word)
+    logger.info(pw_count)
+
+    with open('per_word_loss.csv', 'w') as w:
+        losses = per_word / pw_count
+        for x in losses.data.numpy():
+            w.write('{}\n'.format(x))
+    return total_loss / len(data_source)
 
 # Run on test data and save the model.
 test_loss = evaluate(test_data)
