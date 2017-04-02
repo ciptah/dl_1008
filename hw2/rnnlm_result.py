@@ -8,6 +8,7 @@ from torch.autograd import Variable
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 
 import data
 import model
@@ -89,12 +90,34 @@ def evaluate(data_source):
     plt.figure()
     plt.bar(range(args.sequence_length), losses.numpy())
     plt.savefig('per_word_loss.png')
+    logger.info('saved per_word_loss.png')
 
     plt.figure()
     plt.bar(range(args.sequence_length), np.exp(losses.numpy()))
     plt.savefig('per_word_pplx.png')
+    logger.info('saved per_word_pplx.png')
 
-    embeddings = model.encoder
+    # Embed using T-SNE
+    emb_np = list(model.encoder.parameters())[0].data.numpy()
+    logger.info('embeddings: %s', embeddings.shape)
+    tsne = TSNE()
+    emb_tsne = tsne.fit_transform(emb_np)
+
+    # Get some labels
+    n_labels = 100 # How many text labels to print?
+    my_labels = list(corpus.dictionary.idx2word)
+    np.random.shuffle(my_labels)
+    my_labels = my_labels[:n_labels]
+    labels_print = [(corpus.dictionary.word2idx[x], x) for x in my_labels]
+
+    # Print a word embedding map.
+    plt.figure(figsize=(15, 15))
+    plt.scatter(emb_tsne[:,0], emb_tsne[:,1], marker='.', color='cyan')
+    for idx, label in labels_print:
+        emb_x, emb_y = emb_tsne[idx,:]
+        plt.text(emb_x, emb_y, label, fontsize=14)
+    plt.savefig('word_embeddings.png')
+    logger.info('saved word_embeddings.png')
 
     return total_loss / len(data_source)
 
