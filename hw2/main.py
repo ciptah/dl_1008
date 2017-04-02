@@ -211,6 +211,9 @@ def run(args, config, min_test_loss):
         if prev_val_loss and val_loss > prev_val_loss:
             lr /= 4.0
             logger.info('new learning rate: {}'.format(lr))
+            if lr < args.min_lr:
+                logger.info('learning rate too small')
+                break
         prev_val_loss = val_loss
 
         if epoch % 6 == 0:
