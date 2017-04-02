@@ -6,7 +6,8 @@ class RNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
     def __init__(self, rnn_type, ntoken, ninp, nhid, nlayers,
-                 emb_init_method="random", weight_init_method="random", preload_emb=None):
+                 emb_init_method="random", weight_init_method="random", preload_emb=None,
+                 dropout=0.5):
         super(RNNModel, self).__init__()
         self.encoder = nn.Embedding(ntoken, ninp)
         if rnn_type in ["LSTM","GRU"]:
@@ -15,8 +16,8 @@ class RNNModel(nn.Module):
             nonlinearity = {'RNN_TANH': 'tanh', 'RNN_RELU': 'relu'}[rnn_type]
             self.rnn = nn.RNN(ninp, nhid, nlayers, nonlinearity=nonlinearity)
         self.decoder = nn.Linear(nhid, ntoken)
-        self.dropout_in = nn.Dropout(p=dropout, inplace=True)
-        self.dropout_out = nn.Dropout(p=dropout, inplace=True)
+        self.dropout_in = nn.Dropout(p=dropout)
+        self.dropout_out = nn.Dropout(p=dropout)
 
         if emb_init_method == "glove":
             self.preload_emb = preload_emb
@@ -43,9 +44,9 @@ class RNNModel(nn.Module):
 
     def forward(self, input, hidden):
         emb = self.encoder(input)
-        self.dropout_in(emb)
+        emb = self.dropout_in(emb)
         output, hidden = self.rnn(emb, hidden)
-        self.dropout_out(output)
+        output = self.dropout_out(output)
         decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
         return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
 

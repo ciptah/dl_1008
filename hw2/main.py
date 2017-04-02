@@ -96,7 +96,7 @@ def run(args, config, min_test_loss):
     model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers,
                      emb_init_method=args.initialization["word_embedding"],
                      weight_init_method=args.initialization["weights"],
-                     preload_emb=preload_emb)
+                     preload_emb=preload_emb, dropout=args.dropout)
     criterion = nn.CrossEntropyLoss()
     if args.cuda:
         model = model.cuda()
