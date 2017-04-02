@@ -13,6 +13,7 @@ import config
 import json
 import sys
 import pickle
+import torch.optim as O
 
 import data
 import model
