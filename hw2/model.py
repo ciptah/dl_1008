@@ -52,6 +52,8 @@ class RNNModel(nn.Module):
 
     def init_hidden(self, bsz, hidden_init_method="zero"):
         weight = next(self.parameters()).data
+        def rd():
+            return torch.Tensor(self.nlayers, bsz, self.nhid).random_(-1, 2).cuda()
         if hidden_init_method == "zero":
             if self.rnn_type == 'LSTM':
                 return (Variable(weight.new(self.nlayers, bsz, self.nhid).zero_()),
@@ -60,7 +62,6 @@ class RNNModel(nn.Module):
                 return Variable(weight.new(self.nlayers, bsz, self.nhid).zero_())
         elif hidden_init_method == "random":
             if self.rnn_type == 'LSTM':
-                return (Variable(weight.new(self.nlayers, bsz, self.nhid).random_(-1, 2)),
-                        Variable(weight.new(self.nlayers, bsz, self.nhid).random_(-1, 2)))
+                return (Variable(rd()), Variable(rd()))
             else:
-                return Variable(weight.new(self.nlayers, bsz, self.nhid).random_(-1, 2  ))
+                return Variable(rd())
