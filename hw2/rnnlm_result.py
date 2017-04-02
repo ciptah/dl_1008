@@ -99,7 +99,7 @@ def evaluate(data_source):
 
     # Embed using T-SNE
     emb_np = list(model.encoder.parameters())[0].data.numpy()
-    logger.info('embeddings: %s', embeddings.shape)
+    logger.info('embeddings: %s', emb_np.shape)
     tsne = TSNE()
     emb_tsne = tsne.fit_transform(emb_np)
 
