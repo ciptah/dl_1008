@@ -3,7 +3,7 @@
   "template": {
     "data": "./data/penn",
     "model": "LSTM",
-    "optim": "adam",
+    "optim": "sgd",
     "emsize": 50,
     "nhid": [50, 100],
     "nlayers": 1,
