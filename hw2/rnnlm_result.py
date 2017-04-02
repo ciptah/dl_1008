@@ -81,7 +81,7 @@ def evaluate(data_source):
 
     with open('per_word_loss.csv', 'w') as w:
         losses = per_word / pw_count
-        for x in losses.data.numpy():
+        for x in losses.numpy():
             w.write('{}\n'.format(x))
     return total_loss / len(data_source)
 
