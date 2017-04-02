@@ -2,20 +2,27 @@
   "verbose": true,
   "template": {
     "data": "./data/penn",
-    "model": ["LSTM", "GRU"],
-    "emsize": [50, 75, 100],
-    "nhid": [50, 75, 100],
-    "nlayers": [1, 2, 3],
+    "model": ["LSTM"],
+    "emsize": [50],
+    "nhid": [50],
+    "nlayers": [1],
     "lr": 20,
-    "clip": [0.5, 0.6, 0.4],
-    "epochs": 2,
+    "clip": [0.5],
+    "epochs": 6,
     "batch_size": 20,
-    "sequence_length": [20, 25, 30],
+    "sequence_length": [20],
     "seed": 1111,
     "log_interval": 20,
     "logfile": "logs/{}.txt",
     "results": "results/{}.txt",
-    "save": "models/{}.pt"
+    "save": "models/{}.pt",
+    "shuffle": true,
+    "initialization": {
+      "word_embedding": "glove",
+      "weights": "zero",
+      "hidden_state": "zero"
+    },
+    "len_relation":false
   },
   "max_saved_models": 50,
   "training_cap": 100

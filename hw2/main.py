@@ -13,6 +13,8 @@ import config
 import json
 import sys
 import pickle
+import numpy as np
+import os
 
 import data
 import model
@@ -57,9 +59,35 @@ def run(args, config, min_test_loss):
     ###############################################################################
     # Build the model
     ###############################################################################
+    def load_embedding(corpus, glove_file="data/glove/glove.6B.{0}d.txt", line_to_load=10000):
+        """
+        Function that populates a dictionary with word embedding vectors
+        """
+        # resolve glove file
+        glove_file = glove_file.format(args.emsize)
+        if not os.path.exists(glove_file):
+            logger.error("glove_file {0} not exist!".format(glove_file))
+            raise ValueError("glove_file {0} not exist!".format(glove_file))
+        ctr = 0
+        word_emb = np.random.uniform(-0.1, 0.1, size=(len(corpus.dictionary), args.emsize))
+        with open(glove_file, "r") as f:
+            for i, line in enumerate(f):
+                ctr += 1
+                contents = line.split()
+                word = contents[0].lower()
+                if word in corpus.dictionary.word2idx:
+                    idx = corpus.dictionary.word2idx[word]
+                    word_emb[idx,:] = np.asarray(contents[1:]).astype(float)
+                if ctr >= line_to_load:
+                    break
+        return torch.Tensor(word_emb)
 
     ntokens = len(corpus.dictionary)
-    model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers)
+    preload_emb = load_embedding(corpus) if args.initialization["word_embedding"] == "glove" else None
+    model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers,
+                     emb_init_method=args.initialization["word_embedding"],
+                     weight_init_method=args.initialization["weights"],
+                     preload_emb=preload_emb)
     criterion = nn.CrossEntropyLoss()
 
     ###############################################################################
@@ -86,8 +114,8 @@ def run(args, config, min_test_loss):
 
     def get_batch(source, i, evaluation=False):
         seq_len = min(args.sequence_length, len(source) - 1 - i)
-        data = Variable(source[i:i+seq_len], volatile=evaluation)
-        target = Variable(source[i+1:i+1+seq_len].view(-1))
+        data = Variable(source[i:i + seq_len], volatile=evaluation)
+        target = Variable(source[i + 1:i + 1 + seq_len].view(-1))
         return data, target
 
 
@@ -108,8 +136,11 @@ def run(args, config, min_test_loss):
         total_loss = 0
         start_time = time.time()
         ntokens = len(corpus.dictionary)
-        hidden = model.init_hidden(args.batch_size)
-        for batch, i in enumerate(range(0, train_data.size(0) - 1, args.sequence_length)):
+        hidden = model.init_hidden(args.batch_size, hidden_init_method=args.initialization["hidden_state"])
+        iter_idx = range(0, train_data.size(0) - 1, args.sequence_length)
+        if args.shuffle:
+            np.random.shuffle(iter_idx)
+        for batch, i in enumerate(iter_idx):
             data, targets = get_batch(train_data, i)
             hidden = repackage_hidden(hidden)
             model.zero_grad()
