@@ -52,6 +52,8 @@ def run(args, config, min_test_loss):
         nbatch = data.size(0) // bsz
         data = data.narrow(0, 0, nbatch * bsz)
         data = data.view(bsz, -1).t().contiguous()
+        if args.cuda:
+            data = data.cuda()
         return data
 
     eval_batch_size = 10
@@ -96,6 +98,8 @@ def run(args, config, min_test_loss):
                      weight_init_method=args.initialization["weights"],
                      preload_emb=preload_emb)
     criterion = nn.CrossEntropyLoss()
+    if args.cuda:
+        model = model.cuda()
     if args.optim == 'adam':
         opt = O.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:

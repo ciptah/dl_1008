@@ -1,6 +1,7 @@
 {
   "verbose": true,
   "template": {
+    "cuda": false,
     "data": "./data/penn",
     "model": "LSTM",
     "optim": "sgd",
