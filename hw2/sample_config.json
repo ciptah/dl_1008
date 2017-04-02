@@ -10,6 +10,7 @@
     "nlayers": 2,
     "dropout": 0.5,
     "lr": 20,
+    "min_lr": 1e-5,
     "weight_decay": 0,
     "momentum": 0.05,
     "clip": 0.5,
