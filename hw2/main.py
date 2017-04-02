@@ -203,7 +203,8 @@ def run(args, config, min_test_loss):
         })
         # Anneal the learning rate.
         if prev_val_loss and val_loss > prev_val_loss:
-            lr /= 4
+            lr /= 4.0
+            logger.info('new learning rate: {}'.format(lr))
         prev_val_loss = val_loss
 
     # Run on test data and save the model.
