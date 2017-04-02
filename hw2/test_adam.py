@@ -13,6 +13,7 @@ import config
 import json
 import sys
 import pickle
+import torch.optim as O
 
 import data
 import model
@@ -23,13 +24,11 @@ def run(args, config, min_test_loss):
     formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
     fileh.setFormatter(formatter)
 
-    logger = logging.getLogger('')  # root logger
+    logger = logging.getLogger('run')  # root logger
     logger.setLevel(logging.INFO)
-    # Second handler is the file logger.
-    for hdlr in logger.handlers[1:]:  # remove all old handlers
+    for hdlr in logger.handlers[:]:  # remove all old handlers
         logger.removeHandler(hdlr)
     logger.addHandler(fileh)      # set the new handler
-    logger = logging.getLogger('run')
 
     logger.info('CONFIGURATION: %s', json.dumps(config, indent=2))
 
@@ -43,7 +42,7 @@ def run(args, config, min_test_loss):
     # Load data
     ###############################################################################
 
-    corpus = data.Corpus(args.data, args.vocab_size)
+    corpus = data.Corpus(args.data)
 
     def batchify(data, bsz):
         nbatch = data.size(0) // bsz
@@ -63,7 +62,9 @@ def run(args, config, min_test_loss):
     ntokens = len(corpus.dictionary)
     model = RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers)
     criterion = nn.CrossEntropyLoss()
-
+    #opt = O.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    opt = O.Adam(model.parameters(), lr=args.lr)
+    
     ###############################################################################
     # Training code
     ###############################################################################
@@ -118,10 +119,11 @@ def run(args, config, min_test_loss):
             output, hidden = model(data, hidden)
             loss = criterion(output.view(-1, ntokens), targets)
             loss.backward()
-
+            
             clipped_lr = lr * clip_gradient(model, args.clip)
-            for p in model.parameters():
-                p.data.add_(-clipped_lr, p.grad.data)
+            for param_group in opt.param_groups:
+                    param_group['lr'] = clipped_lr
+            opt.step()
 
             total_loss += loss.data
 
@@ -162,8 +164,7 @@ def run(args, config, min_test_loss):
         })
         # Anneal the learning rate.
         if prev_val_loss and val_loss > prev_val_loss:
-            lr /= 4.0
-            logger.info('new learning rate: {}'.format(lr))
+            lr /= 4
         prev_val_loss = val_loss
 
     # Run on test data and save the model.
