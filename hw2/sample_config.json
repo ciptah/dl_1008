@@ -9,16 +9,24 @@
     "nlayers": 1,
     "lr": 20,
     "weight_decay": 0,
+    "momentum": 0.05,
     "clip": 0.5,
     "epochs": 3,
     "batch_size": 20,
     "vocab_size": 10000,
     "sequence_length": 20,
     "seed": 1111,
-    "log_interval": 200,
+    "log_interval": 100,
     "logfile": "logs/{}.txt",
     "results": "results/{}.txt",
-    "save": "models/{}.pt"
+    "save": "models/{}.pt",
+    "shuffle": true,
+    "initialization": {
+      "word_embedding": "glove",
+      "weights": "zero",
+      "hidden_state": "zero"
+    },
+    "len_relation":false
   },
   "max_saved_models": 50,
   "training_cap": 100
