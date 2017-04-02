@@ -10,8 +10,8 @@ class RNNModel(nn.Module):
         self.encoder = nn.Embedding(ntoken, ninp)
         self.rnn = getattr(nn, rnn_type)(ninp, nhid, nlayers, bias=False, dropout=dropout)
         self.decoder = nn.Linear(nhid, ntoken)
-        self.dropout_in = nn.Dropout(p=dropout)
-        self.dropout_out = nn.Dropout(p=dropout)
+        self.dropout_in = nn.Dropout(p=dropout, inplace=True)
+        self.dropout_out = nn.Dropout(p=dropout, inplace=True)
 
         self.init_weights()
 
@@ -26,9 +26,10 @@ class RNNModel(nn.Module):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, input, hidden):
-        emb = self.dropout_in(self.encoder(input))
+        emb = self.encoder(input)
+        self.dropout_in(emb)
         output, hidden = self.rnn(emb, hidden)
-        output = self.dropout_out(output)
+        self.dropout_out(output)
         decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
         return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
 

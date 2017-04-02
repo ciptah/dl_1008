@@ -15,7 +15,7 @@
     "sequence_length": 20,
     "seed": 1111,
     "log_interval": 200,
-    "cuda": true,
+    "cuda": false,
     "logfile": "logs/{}.txt",
     "results": "results/{}.txt",
     "save": "models/{}.pt"
