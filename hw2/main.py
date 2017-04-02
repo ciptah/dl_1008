@@ -136,6 +136,7 @@ def run(args, config, min_test_loss):
 
     def evaluate(data_source):
         total_loss = 0
+        model.eval()
         ntokens = len(corpus.dictionary)
         hidden = model.init_hidden(eval_batch_size)
         for i in range(0, data_source.size(0) - 1, args.sequence_length):
@@ -148,6 +149,7 @@ def run(args, config, min_test_loss):
 
 
     def train():
+        model.train()
         total_loss = 0
         start_time = time.time()
         ntokens = len(corpus.dictionary)
@@ -210,6 +212,11 @@ def run(args, config, min_test_loss):
             lr /= 4.0
             logger.info('new learning rate: {}'.format(lr))
         prev_val_loss = val_loss
+
+        if epoch % 6 == 0:
+            with open('models/snapshot.pt', 'wb') as f:
+                torch.save(model, f)
+            logger.info('saved snapshot model.')
 
     # Run on test data and save the model.
     test_loss = evaluate(test_data)

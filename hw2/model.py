@@ -15,6 +15,9 @@ class RNNModel(nn.Module):
             nonlinearity = {'RNN_TANH': 'tanh', 'RNN_RELU': 'relu'}[rnn_type]
             self.rnn = nn.RNN(ninp, nhid, nlayers, nonlinearity=nonlinearity)
         self.decoder = nn.Linear(nhid, ntoken)
+        self.dropout_in = nn.Dropout(p=dropout, inplace=True)
+        self.dropout_out = nn.Dropout(p=dropout, inplace=True)
+
         if emb_init_method == "glove":
             self.preload_emb = preload_emb
         self.init_weights(emb_init_method=emb_init_method, weight_init_method=weight_init_method)
@@ -40,7 +43,9 @@ class RNNModel(nn.Module):
 
     def forward(self, input, hidden):
         emb = self.encoder(input)
+        self.dropout_in(emb)
         output, hidden = self.rnn(emb, hidden)
+        self.dropout_out(output)
         decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
         return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
 
