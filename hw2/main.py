@@ -228,10 +228,11 @@ def run(args, config, min_test_loss):
         test_loss, math.exp(test_loss)))
     logger.info('=' * 89)
     if args.save != '' and test_loss < min_test_loss:
+        mcpu = model.cpu()
         with open(args.save, 'wb') as f:
-            torch.save(model, f)
+            torch.save(mcpu, f)
         with open('models/best_model.pt', 'wb') as f:
-            torch.save(model, f)
+            torch.save(mcpu, f)
 
     # Log results in a machine-readable JSON.
     result = {}
