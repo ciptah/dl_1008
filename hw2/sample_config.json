@@ -1,20 +1,20 @@
 {
   "verbose": true,
   "template": {
-    "cuda": false,
+    "cuda": true,
     "data": "./data/penn",
     "model": "LSTM",
     "optim": "sgd",
-    "emsize": [200, 300, 400],
-    "nhid": [150, 200, 300, 400],
-    "nlayers": [1, 2, 3, 4],
-    "dropout": 0.5,
+    "emsize": 300,
+    "nhid": [1000, 1500],
+    "nlayers": [2, 3, 1],
+    "dropout": [0.6, 0.7, 0.5],
     "lr": 20,
     "min_lr": 1e-5,
     "weight_decay": 0,
     "momentum": 0.05,
     "clip": 0.5,
-    "epochs": 25,
+    "epochs": 30,
     "batch_size": 20,
     "vocab_size": 10000,
     "sequence_length": 20,
@@ -27,7 +27,7 @@
     "initialization": {
       "word_embedding": "random",
       "weights": "random",
-      "hidden_state": "zero"
+      "hidden_state": "random"
     },
     "len_relation":false
   },
