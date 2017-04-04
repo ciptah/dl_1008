@@ -6,7 +6,8 @@ class RNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
     def __init__(self, rnn_type, ntoken, ninp, nhid, nlayers,
-                 emb_init_method="random", weight_init_method="random", preload_emb=None):
+                 emb_init_method="random", weight_init_method="random", preload_emb=None,
+                 dropout=0.5):
         super(RNNModel, self).__init__()
         self.encoder = nn.Embedding(ntoken, ninp)
         if rnn_type in ["LSTM","GRU"]:
@@ -15,6 +16,9 @@ class RNNModel(nn.Module):
             nonlinearity = {'RNN_TANH': 'tanh', 'RNN_RELU': 'relu'}[rnn_type]
             self.rnn = nn.RNN(ninp, nhid, nlayers, nonlinearity=nonlinearity)
         self.decoder = nn.Linear(nhid, ntoken)
+        self.dropout_in = nn.Dropout(p=dropout)
+        self.dropout_out = nn.Dropout(p=dropout)
+
         if emb_init_method == "glove":
             self.preload_emb = preload_emb
         self.init_weights(emb_init_method=emb_init_method, weight_init_method=weight_init_method)
@@ -40,12 +44,16 @@ class RNNModel(nn.Module):
 
     def forward(self, input, hidden):
         emb = self.encoder(input)
+        emb = self.dropout_in(emb)
         output, hidden = self.rnn(emb, hidden)
+        output = self.dropout_out(output)
         decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2)))
         return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden
 
     def init_hidden(self, bsz, hidden_init_method="zero"):
         weight = next(self.parameters()).data
+        def rd():
+            return torch.Tensor(self.nlayers, bsz, self.nhid).random_(-1, 2).cuda()
         if hidden_init_method == "zero":
             if self.rnn_type == 'LSTM':
                 return (Variable(weight.new(self.nlayers, bsz, self.nhid).zero_()),
@@ -54,7 +62,6 @@ class RNNModel(nn.Module):
                 return Variable(weight.new(self.nlayers, bsz, self.nhid).zero_())
         elif hidden_init_method == "random":
             if self.rnn_type == 'LSTM':
-                return (Variable(weight.new(self.nlayers, bsz, self.nhid).random_(-1, 2)),
-                        Variable(weight.new(self.nlayers, bsz, self.nhid).random_(-1, 2)))
+                return (Variable(rd()), Variable(rd()))
             else:
-                return Variable(weight.new(self.nlayers, bsz, self.nhid).random_(-1, 2  ))
+                return Variable(rd())
